@@ -147,4 +147,22 @@ class KittyEngineTest {
         assertEquals(150.0, k.potCollected(c0), 0.001)
         assertEquals(300.0, k.expectedTotalForCycle(), 0.001)
     }
+
+    @Test
+    fun `closed cycle cannot be modified`() {
+        val k = kittyWith3Members()
+        val c0 = Cycle(index = 0, payoutMemberId = "a")
+        engine.recordPayment(k, c0, "a", 100.0)
+        engine.recordPayment(k, c0, "b", 100.0)
+        engine.recordPayment(k, c0, "c", 100.0)
+        assertTrue(engine.closeCycle(k, c0))
+
+        engine.recordPayment(k, c0, "a", 200.0)
+        engine.undoPayment(k, c0, "b")
+
+        assertEquals(3, c0.contributions.size)
+        assertEquals(100.0, c0.contributions["a"]!!.amount, 0.001)
+        assertTrue(c0.contributions.containsKey("b"))
+        assertTrue(c0.contributions.containsKey("c"))
+    }
 }

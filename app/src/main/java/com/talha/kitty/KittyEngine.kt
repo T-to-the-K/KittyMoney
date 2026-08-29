@@ -23,14 +23,17 @@ class KittyEngine {
         return (kitty.contributionAmount - paid).coerceAtLeast(0.0)
     }
 
-    /** Record a member's payment for a cycle. Creates or updates the contribution. */
+    /** Record a member's payment for a cycle. Creates or updates the contribution.
+     *  Closed cycles are frozen and cannot be changed. */
     fun recordPayment(kitty: Kitty, cycle: Cycle, memberId: String, amount: Double, paidAtMillis: Long = System.currentTimeMillis()) {
+        if (cycle.isClosed) return
         if (amount <= 0) return
         cycle.contributions[memberId] = Contribution(memberId, cycle.index, amount, paidAtMillis)
     }
 
-    /** Remove a member's recorded payment for a cycle. */
+    /** Remove a member's recorded payment for a cycle. Closed cycles are frozen. */
     fun undoPayment(kitty: Kitty, cycle: Cycle, memberId: String) {
+        if (cycle.isClosed) return
         cycle.contributions.remove(memberId)
     }
 

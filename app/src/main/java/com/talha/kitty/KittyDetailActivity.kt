@@ -12,6 +12,9 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class KittyDetailActivity : AppCompatActivity() {
 
@@ -125,13 +128,19 @@ class KittyDetailActivity : AppCompatActivity() {
         }
         memberBox.columnCount = cols
         k.members.forEach { m ->
-            val checked = cycle.contributions.containsKey(m.id)
-            val cb = CheckBox(this)
-            cb.text = "  👤 ${m.name}"
-            cb.isChecked = checked
+            val contribution = cycle.contributions[m.id]
+            val checked = contribution != null
             val tint = if (checked) 0xFF3E9B6E.toInt() else 0xFFC4685A.toInt()
+            val cb = CheckBox(this)
+            cb.text =
+                if (checked) "  👤 ${m.name}\n  Paid ${formatTime(contribution!!.paidAtMillis)}"
+                else "  👤 ${m.name}"
+            cb.isChecked = checked
             cb.buttonTintList = android.content.res.ColorStateList.valueOf(tint)
             cb.setTextColor(tint)
+            val frozen = cycle.isClosed
+            cb.isClickable = !frozen
+            cb.isEnabled = !frozen
             cb.setOnCheckedChangeListener { _, chk ->
                 if (chk) {
                     engine.recordPayment(k, cycle, m.id, k.contributionAmount)
@@ -193,5 +202,10 @@ class KittyDetailActivity : AppCompatActivity() {
         k.cycles.add(Cycle(index = index, payoutMemberId = payeeId))
         KittyStore.update()
         render()
+    }
+
+    private fun formatTime(millis: Long): String {
+        val fmt = SimpleDateFormat("d MMM, hh:mm a", Locale.getDefault())
+        return fmt.format(Date(millis))
     }
 }
