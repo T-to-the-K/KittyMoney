@@ -125,11 +125,15 @@ class KittyDetailActivity : AppCompatActivity() {
         }
         memberBox.columnCount = cols
         k.members.forEach { m ->
+            val checked = cycle.contributions.containsKey(m.id)
             val cb = CheckBox(this)
-            cb.text = m.name
-            cb.isChecked = cycle.contributions.containsKey(m.id)
-            cb.setOnCheckedChangeListener { _, checked ->
-                if (checked) {
+            cb.text = "  👤 ${m.name}"
+            cb.isChecked = checked
+            val tint = if (checked) 0xFF3E9B6E.toInt() else 0xFFC4685A.toInt()
+            cb.buttonTintList = android.content.res.ColorStateList.valueOf(tint)
+            cb.setTextColor(tint)
+            cb.setOnCheckedChangeListener { _, chk ->
+                if (chk) {
                     engine.recordPayment(k, cycle, m.id, k.contributionAmount)
                 } else {
                     engine.undoPayment(k, cycle, m.id)
