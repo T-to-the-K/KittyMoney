@@ -23,11 +23,10 @@
         android:textColor="#888"
         android:textSize="13sp" />
 
-    <LinearLayout
+    <GridLayout
         android:id="@+id/cycleMembers"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
         android:layout_marginTop="4dp" />
 
     <Button

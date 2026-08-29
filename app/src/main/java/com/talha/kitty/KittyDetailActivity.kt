@@ -7,6 +7,7 @@ import android.view.View
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
+import android.widget.GridLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
@@ -80,7 +81,7 @@ class KittyDetailActivity : AppCompatActivity() {
         val payee = k.members.firstOrNull { it.id == cycle.payoutMemberId }?.name ?: "?"
         val title = v.findViewById<TextView>(R.id.tvCycleTitle)
         val status = v.findViewById<TextView>(R.id.tvCycleStatus)
-        val memberBox = v.findViewById<LinearLayout>(R.id.cycleMembers)
+        val memberBox = v.findViewById<GridLayout>(R.id.cycleMembers)
         val btnClose = v.findViewById<Button>(R.id.btnCloseCycle)
 
         title.text = "Cycle ${cycle.index + 1} — pays ${payee}"
@@ -89,6 +90,13 @@ class KittyDetailActivity : AppCompatActivity() {
         status.text = "Collected $pot / $expected"
 
         memberBox.removeAllViews()
+        val cols = when {
+            k.members.isEmpty() -> 1
+            k.members.size <= 4 -> k.members.size
+            k.members.size <= 8 -> 2
+            else -> 3
+        }
+        memberBox.columnCount = cols
         k.members.forEach { m ->
             val cb = CheckBox(this)
             cb.text = m.name
@@ -102,6 +110,11 @@ class KittyDetailActivity : AppCompatActivity() {
                 KittyStore.update()
                 render()
             }
+            val lp = GridLayout.LayoutParams()
+            lp.width = 0
+            lp.height = GridLayout.LayoutParams.WRAP_CONTENT
+            lp.columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
+            cb.layoutParams = lp
             memberBox.addView(cb)
         }
 
