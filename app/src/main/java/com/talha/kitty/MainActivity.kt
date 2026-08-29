@@ -86,6 +86,17 @@ class MainActivity : AppCompatActivity() {
             val k = items[position]
             holder.name.text = k.name
             holder.meta.text = "${k.members.size} members · ${k.contributionAmount} per cycle"
+
+            val nextPayee = k.payoutForCycle(engine.nextCycleIndex(k))
+            val nextName = k.members.firstOrNull { it.id == nextPayee }?.name
+            if (nextName != null) {
+                holder.tag.text = "Next: $nextName"
+                holder.tag.setTextColor(if (engine.isRotationBalanced(k)) 0xFF3E9B6E.toInt() else 0xFFD9A11C.toInt())
+            } else {
+                holder.tag.text = "New"
+                holder.tag.setTextColor(0xFFC4685A.toInt())
+            }
+
             holder.itemView.setOnClickListener {
                 val intent = Intent(this@MainActivity, KittyDetailActivity::class.java)
                 intent.putExtra(KittyDetailActivity.EXTRA_KITTY_ID, k.id)
@@ -110,6 +121,7 @@ class MainActivity : AppCompatActivity() {
         inner class VH(v: View) : RecyclerView.ViewHolder(v) {
             val name: TextView = v.findViewById(R.id.tvName)
             val meta: TextView = v.findViewById(R.id.tvMeta)
+            val tag: TextView = v.findViewById(R.id.tvTag)
         }
     }
 }

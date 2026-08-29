@@ -1,8 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.KittyMoney" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="colorPrimary">@color/purple_500</item>
-        <item name="colorPrimaryVariant">@color/purple_700</item>
-        <item name="colorSecondary">@color/teal_200</item>
+        <item name="colorPrimary">@color/warm_primary</item>
+        <item name="colorPrimaryVariant">@color/warm_primary_dark</item>
+        <item name="colorSecondary">@color/warm_secondary</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:statusBarColor">@color/warm_cream</item>
+        <item name="android:navigationBarColor">@color/warm_cream</item>
+        <item name="android:colorBackground">@color/warm_cream</item>
     </style>
 </resources>

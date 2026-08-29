@@ -1,7 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="purple_500">#6200EE</color>
-    <color name="purple_700">#3700B3</color>
-    <color name="teal_200">#03DAC5</color>
+    <color name="warm_cream">#FDF6EC</color>
+    <color name="warm_card">#FFFFFF</color>
+    <color name="warm_primary">#E8845C</color>
+    <color name="warm_primary_dark">#C96A45</color>
+    <color name="warm_secondary">#F2C14E</color>
+    <color name="warm_text">#4A3F35</color>
+    <color name="warm_subtext">#A09383</color>
+    <color name="warm_green">#3E9B6E</color>
+    <color name="warm_amber">#D9A11C</color>
+    <color name="warm_red">#C4685A</color>
+    <color name="warm_border">#F0E4D4</color>
     <color name="green_600">#2E7D32</color>
 </resources>

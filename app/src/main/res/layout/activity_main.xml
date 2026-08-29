@@ -3,38 +3,54 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:background="@color/warm_cream">
 
-    <TextView
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Kitty Money"
-        android:textSize="28sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="4dp" />
+        android:orientation="vertical"
+        android:paddingHorizontal="20dp"
+        android:paddingTop="24dp"
+        android:paddingBottom="12dp">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Track your rotating savings groups"
-        android:textSize="14sp"
-        android:textColor="#666"
-        android:layout_marginBottom="16dp" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Kitty Money"
+            android:textColor="@color/warm_text"
+            android:textSize="30sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Your savings circle, at a glance"
+            android:textSize="14sp"
+            android:textColor="@color/warm_subtext"
+            android:layout_marginTop="2dp" />
+
+    </LinearLayout>
 
     <Button
         android:id="@+id/btnAdd"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="+ New Kitty" />
+        android:layout_marginHorizontal="20dp"
+        android:layout_marginBottom="8dp"
+        android:backgroundTint="@color/warm_primary"
+        android:text="+ New Kitty"
+        android:textSize="16sp"
+        android:textStyle="bold" />
 
     <TextView
         android:id="@+id/txtEmpty"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="No kitties yet. Tap + New Kitty to start.\n\nLong-press a kitty to delete it."
+        android:text="No kitties yet.\n\nTap + New Kitty to start one, then\ntap it to track members and cycles.\n\nLong-press a kitty to delete it."
         android:gravity="center"
         android:layout_marginTop="64dp"
-        android:textColor="#888"
+        android:textColor="@color/warm_subtext"
+        android:textSize="15sp"
         android:layout_weight="1" />
 
     <androidx.recyclerview.widget.RecyclerView
@@ -42,6 +58,8 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:layout_marginTop="8dp" />
+        android:layout_marginHorizontal="20dp"
+        android:layout_marginTop="8dp"
+        android:clipToPadding="false" />
 
 </LinearLayout>

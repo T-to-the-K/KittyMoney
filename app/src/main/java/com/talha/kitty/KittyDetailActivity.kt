@@ -21,6 +21,7 @@ class KittyDetailActivity : AppCompatActivity() {
     private lateinit var tvName: TextView
     private lateinit var tvMeta: TextView
     private lateinit var tvStats: TextView
+    private lateinit var tvNextPayout: TextView
     private lateinit var membersContainer: LinearLayout
     private lateinit var cyclesContainer: LinearLayout
 
@@ -36,6 +37,7 @@ class KittyDetailActivity : AppCompatActivity() {
         tvName = findViewById(R.id.tvKittyName)
         tvMeta = findViewById(R.id.tvKittyMeta)
         tvStats = findViewById(R.id.tvStats)
+        tvNextPayout = findViewById(R.id.tvNextPayout)
         membersContainer = findViewById(R.id.membersContainer)
         cyclesContainer = findViewById(R.id.cyclesContainer)
 
@@ -58,12 +60,22 @@ class KittyDetailActivity : AppCompatActivity() {
 
         val collected = engine.runningBalance(k)
         val complete = k.cycles.count { it.isClosed }
-        tvStats.text = "Total collected: $collected\nCycles completed: $complete / ${k.cycles.size}"
+        tvStats.text = "Total collected:  $collected\nCycles completed:  $complete / ${k.cycles.size}"
+
+        val nextIndex = engine.nextCycleIndex(k)
+        val nextPayeeId = k.payoutForCycle(nextIndex)
+        val nextName = k.members.firstOrNull { it.id == nextPayeeId }?.name
+        tvNextPayout.text =
+            if (nextName != null) "Next payout:  ${nextName} (cycle ${nextIndex + 1})"
+            else "Add members to see who collects next."
 
         membersContainer.removeAllViews()
         k.members.forEach { m ->
             val row = LayoutInflater.from(this).inflate(R.layout.item_member, membersContainer, false)
             row.findViewById<TextView>(R.id.tvMemberName).text = m.name
+            val paid = engine.totalPaid(k, m.id)
+            row.findViewById<TextView>(R.id.tvMemberStatus).text =
+                if (paid > 0) "Paid in total:  $paid" else "No contributions yet"
             row.findViewById<Button>(R.id.btnRemoveMember).setOnClickListener {
                 k.members.remove(m)
                 KittyStore.update()
@@ -81,13 +93,28 @@ class KittyDetailActivity : AppCompatActivity() {
         val payee = k.members.firstOrNull { it.id == cycle.payoutMemberId }?.name ?: "?"
         val title = v.findViewById<TextView>(R.id.tvCycleTitle)
         val status = v.findViewById<TextView>(R.id.tvCycleStatus)
+        val summary = v.findViewById<TextView>(R.id.tvCycleSummary)
         val memberBox = v.findViewById<GridLayout>(R.id.cycleMembers)
         val btnClose = v.findViewById<Button>(R.id.btnCloseCycle)
 
         title.text = "Cycle ${cycle.index + 1} — pays ${payee}"
         val pot = k.potCollected(cycle)
         val expected = k.expectedTotalForCycle()
-        status.text = "Collected $pot / $expected"
+        summary.text = "Collected $pot of $expected"
+
+        val complete = engine.isCycleComplete(k, cycle)
+        status.text = when {
+            cycle.isClosed -> "Done"
+            complete -> "Ready"
+            else -> "${k.members.size - cycle.contributions.size} to pay"
+        }
+        status.setTextColor(
+            when {
+                cycle.isClosed -> 0xFF3E9B6E.toInt()
+                complete -> 0xFF3E9B6E.toInt()
+                else -> 0xFFD9A11C.toInt()
+            }
+        )
 
         memberBox.removeAllViews()
         val cols = when {
