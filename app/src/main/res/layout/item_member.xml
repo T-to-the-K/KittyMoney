@@ -32,6 +32,14 @@
     </LinearLayout>
 
     <Button
+        android:id="@+id/btnShares"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Shares"
+        android:textColor="@color/warm_primary_dark"
+        style="?android:attr/buttonBarButtonStyle" />
+
+    <Button
         android:id="@+id/btnRemoveMember"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

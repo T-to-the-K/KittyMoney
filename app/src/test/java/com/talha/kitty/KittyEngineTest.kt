@@ -9,8 +9,8 @@ class KittyEngineTest {
 
     private val engine = KittyEngine.instance
 
-    private fun kittyWith3Members(name: String = "Test"): Kitty {
-        val k = Kitty(name = name)
+    private fun kittyWith3Members(name: String = "Test", shareAmount: Double = 0.0): Kitty {
+        val k = Kitty(name = name, shareAmount = shareAmount)
         k.members.add(Member(id = "a", name = "A"))
         k.members.add(Member(id = "b", name = "B"))
         k.members.add(Member(id = "c", name = "C"))
@@ -18,18 +18,79 @@ class KittyEngineTest {
     }
 
     @Test
-    fun `round robin payout rotates through members`() {
+    fun `one share per member rotates round-robin`() {
         val k = kittyWith3Members()
-        assertEquals("a", k.payoutForCycle(0))
-        assertEquals("b", k.payoutForCycle(1))
-        assertEquals("c", k.payoutForCycle(2))
-        assertEquals("a", k.payoutForCycle(3))
+        val order = k.buildSchedule().map { it.single().memberId }
+        assertEquals(listOf("a", "b", "c"), order)
+        assertEquals(3, engine.rotationLength(k))
+        assertEquals("a", engine.payeesForCycle(k, 3).single().memberId)
     }
 
     @Test
-    fun `payout returns null when there are no members`() {
+    fun `payees empty when there are no members`() {
         val k = Kitty(name = "Empty")
-        assertEquals(null, k.payoutForCycle(0))
+        assertTrue(engine.payeesForCycle(k, 0).isEmpty())
+    }
+
+    @Test
+    fun `totalShares sums share holdings`() {
+        val k = Kitty(name = "Shares")
+        k.members.add(Member(id = "a", name = "A"))
+        k.members.add(Member(id = "b", name = "B", shares = 2.0))
+        k.members.add(Member(id = "c", name = "C", shares = 0.5))
+        assertEquals(3.5, k.totalShares(), 0.001)
+    }
+
+    @Test
+    fun `double share member holds two payout slots`() {
+        val k = Kitty(name = "Double")
+        k.members.add(Member(id = "a", name = "A"))
+        k.members.add(Member(id = "b", name = "B", shares = 2.0))
+        k.members.add(Member(id = "c", name = "C"))
+        val order = k.buildSchedule().map { it.single().memberId }
+        assertEquals(listOf("a", "b", "b", "c"), order)
+        assertEquals(4, engine.rotationLength(k))
+    }
+
+    @Test
+    fun `two half shares split one slot`() {
+        val k = Kitty(name = "Split")
+        k.members.add(Member(id = "a", name = "A", shares = 0.5))
+        k.members.add(Member(id = "b", name = "B", shares = 0.5))
+        k.members.add(Member(id = "c", name = "C"))
+        val schedule = k.buildSchedule()
+        assertEquals(2, schedule.size)
+        val split = schedule[1]
+        assertEquals(2, split.size)
+        assertEquals(0.5, split[0].fraction, 0.001)
+        assertEquals("a", split[0].memberId)
+        assertEquals(0.5, split[1].fraction, 0.001)
+        assertEquals("b", split[1].memberId)
+    }
+
+    @Test
+    fun `unpaired half share gets its own half-pot slot`() {
+        val k = Kitty(name = "Odd")
+        k.members.add(Member(id = "a", name = "A", shares = 0.5))
+        k.members.add(Member(id = "b", name = "B"))
+        val schedule = k.buildSchedule()
+        assertEquals(2, schedule.size)
+        assertEquals(1.0, schedule[0].single().fraction, 0.001)
+        assertEquals("b", schedule[0].single().memberId)
+        assertEquals(0.5, schedule[1].single().fraction, 0.001)
+        assertEquals("a", schedule[1].single().memberId)
+    }
+
+    @Test
+    fun `expected contribution scales with shares`() {
+        val k = Kitty(name = "Exp", shareAmount = 100.0)
+        k.members.add(Member(id = "a", name = "A"))
+        k.members.add(Member(id = "b", name = "B", shares = 2.0))
+        k.members.add(Member(id = "c", name = "C", shares = 0.5))
+        assertEquals(100.0, engine.expectedContribution(k, k.members[0]), 0.001)
+        assertEquals(200.0, engine.expectedContribution(k, k.members[1]), 0.001)
+        assertEquals(50.0, engine.expectedContribution(k, k.members[2]), 0.001)
+        assertEquals(350.0, engine.potExpected(k), 0.001)
     }
 
     @Test
@@ -103,12 +164,14 @@ class KittyEngineTest {
     }
 
     @Test
-    fun `rotation is balanced when every member has had a closed payout`() {
+    fun `rotation is balanced only after every slot is paid out`() {
         val k = kittyWith3Members()
         val c0 = Cycle(index = 0, payoutMemberId = "a")
         val c1 = Cycle(index = 1, payoutMemberId = "b")
+        val c2 = Cycle(index = 2, payoutMemberId = "c")
         k.cycles.add(c0)
         k.cycles.add(c1)
+        k.cycles.add(c2)
         assertFalse(engine.isRotationBalanced(k))
         engine.recordPayment(k, c0, "a", 100.0)
         engine.recordPayment(k, c0, "b", 100.0)
@@ -120,8 +183,6 @@ class KittyEngineTest {
         engine.recordPayment(k, c1, "c", 100.0)
         assertTrue(engine.closeCycle(k, c1))
         assertFalse(engine.isRotationBalanced(k))
-        val c2 = Cycle(index = 2, payoutMemberId = "c")
-        k.cycles.add(c2)
         engine.recordPayment(k, c2, "a", 100.0)
         engine.recordPayment(k, c2, "b", 100.0)
         engine.recordPayment(k, c2, "c", 100.0)

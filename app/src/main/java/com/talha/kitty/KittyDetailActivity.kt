@@ -57,50 +57,84 @@ class KittyDetailActivity : AppCompatActivity() {
     private fun render() {
         val k = kitty ?: return
         tvName.text = k.name
-        tvMeta.text = "${k.members.size} members · each adds any amount"
+        tvMeta.text = buildString {
+            append("${k.members.size} members")
+            if (k.shareAmount > 0) {
+                val total = k.totalShares()
+                append(" · ${fmt(total)} shares overall · ${fmt(k.shareAmount)} per share")
+                append("\nExpected pot per cycle:  ${fmt(engine.potExpected(k))}")
+            } else {
+                append(" · members add any amount")
+            }
+        }
 
         val collected = engine.runningBalance(k)
         val complete = k.cycles.count { it.isClosed }
-        tvStats.text = "Total collected:  $collected\nCycles completed:  $complete / ${k.cycles.size}"
+        val rotation = engine.rotationLength(k)
+        tvStats.text = "Total collected:  $collected\n" +
+            "Cycles completed:  $complete / ${k.cycles.size}\n" +
+            "Full rotation:  $rotation payouts"
 
         val nextIndex = engine.nextCycleIndex(k)
-        val nextPayeeId = k.payoutForCycle(nextIndex)
-        val nextName = k.members.firstOrNull { it.id == nextPayeeId }?.name
+        val payees = engine.payeesForCycle(k, nextIndex)
+        val names = payees.mapNotNull { p ->
+            k.members.firstOrNull { it.id == p.memberId }?.name?.let { n -> labelFor(n, p.fraction) }
+        }
         tvNextPayout.text =
-            if (nextName != null) "Next payout:  ${nextName} (cycle ${nextIndex + 1})"
-            else "Add members to see who collects next."
+            if (names.isNotEmpty()) {
+                val partial = payees.any { it.fraction < 1.0 }
+                val size = if (partial && payees.size == 1) " (half pot)" else ""
+                val pot = if (k.shareAmount > 0) " · pot ${fmt(engine.potExpected(k))}" else ""
+                "Next payout:  ${names.joinToString(" & ")}$size$pot (cycle ${nextIndex + 1})"
+            } else {
+                "Add members to see who collects next."
+            }
 
         membersContainer.removeAllViews()
         k.members.forEach { m ->
-            val row = LayoutInflater.from(this).inflate(R.layout.item_member, membersContainer, false)
-            row.findViewById<TextView>(R.id.tvMemberName).text = m.name
-            val paid = engine.totalPaid(k, m.id)
-            row.findViewById<TextView>(R.id.tvMemberStatus).text =
-                if (paid > 0) "Paid in total:  $paid" else "No contributions yet"
-            row.findViewById<Button>(R.id.btnRemoveMember).setOnClickListener {
-                k.members.remove(m)
-                KittyStore.update()
-                render()
-            }
-            membersContainer.addView(row)
+            membersContainer.addView(buildMemberRow(k, m))
         }
 
         cyclesContainer.removeAllViews()
         k.cycles.forEach { cycle -> cyclesContainer.addView(buildCycleView(k, cycle)) }
     }
 
+    private fun buildMemberRow(k: Kitty, m: Member): View {
+        val row = LayoutInflater.from(this).inflate(R.layout.item_member, membersContainer, false)
+        row.findViewById<TextView>(R.id.tvMemberName).text = "${m.name} — ${fmt(m.shares)} share${if (m.shares == 1.0) "" else "s"}"
+        val expected = engine.expectedContribution(k, m)
+        val paid = engine.totalPaid(k, m.id)
+        row.findViewById<TextView>(R.id.tvMemberStatus).text = buildString {
+            if (expected > 0) append("Expected ${fmt(expected)} per cycle") else append("Contributes any amount")
+            if (paid > 0) append(" · paid ${fmt(paid)} in total")
+        }
+        row.findViewById<Button>(R.id.btnShares).setOnClickListener { showSharesDialog(k, m) }
+        row.findViewById<Button>(R.id.btnRemoveMember).setOnClickListener {
+            k.members.remove(m)
+            KittyStore.update()
+            render()
+        }
+        return row
+    }
+
     private fun buildCycleView(k: Kitty, cycle: Cycle): View {
         val v = LayoutInflater.from(this).inflate(R.layout.item_cycle, cyclesContainer, false)
-        val payee = k.members.firstOrNull { it.id == cycle.payoutMemberId }?.name ?: "?"
         val title = v.findViewById<TextView>(R.id.tvCycleTitle)
         val status = v.findViewById<TextView>(R.id.tvCycleStatus)
         val summary = v.findViewById<TextView>(R.id.tvCycleSummary)
         val memberBox = v.findViewById<LinearLayout>(R.id.cycleMembers)
         val btnClose = v.findViewById<Button>(R.id.btnCloseCycle)
 
-        title.text = "Cycle ${cycle.index + 1} — pays ${payee}"
+        val payeeLabels = cycle.payouts.mapNotNull { p ->
+            k.members.firstOrNull { it.id == p.memberId }?.name?.let { n -> labelFor(n, p.fraction) }
+        }
+        title.text = "Cycle ${cycle.index + 1} — pays ${payeeLabels.joinToString(" & ")}"
+
         val pot = k.potCollected(cycle)
-        summary.text = "Collected so far:  $pot"
+        summary.text = if (k.shareAmount > 0)
+            "Collected ${fmt(pot)} of expected pot ${fmt(engine.potExpected(k))}"
+        else
+            "Collected so far:  ${fmt(pot)}"
 
         val complete = engine.isCycleComplete(k, cycle)
         status.text = when {
@@ -118,12 +152,16 @@ class KittyDetailActivity : AppCompatActivity() {
 
         memberBox.removeAllViews()
         val frozen = cycle.isClosed
+        val dp = resources.displayMetrics.density
         k.members.forEach { m ->
             val row = Button(this)
             val contribution = cycle.contributions[m.id]
             val amount = contribution?.amount ?: 0.0
+            val expected = engine.expectedContribution(k, m)
             row.text = if (amount > 0)
-                "👤 ${m.name}\n   gave $amount (${formatTime(contribution!!.paidAtMillis)})"
+                "👤 ${m.name}\n   gave ${fmt(amount)} (${formatTime(contribution!!.paidAtMillis)})"
+            else if (expected > 0)
+                "👤 ${m.name} · ${fmt(m.shares)} share${if (m.shares == 1.0) "" else "s"} (expected ${fmt(expected)})\n   tap to enter amount"
             else
                 "👤 ${m.name}\n   tap to enter amount"
             row.setBackgroundResource(R.drawable.bg_tag)
@@ -136,7 +174,6 @@ class KittyDetailActivity : AppCompatActivity() {
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             )
-            val dp = resources.displayMetrics.density
             lp.setMargins(0, (4 * dp).toInt(), 0, (4 * dp).toInt())
             row.layoutParams = lp
             memberBox.addView(row)
@@ -150,7 +187,7 @@ class KittyDetailActivity : AppCompatActivity() {
                 Toast.makeText(this, "Cycle ${cycle.index + 1} closed", Toast.LENGTH_SHORT).show()
                 render()
             } else {
-                Toast.makeText(this, "All members must pay before closing", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "All members must contribute before closing", Toast.LENGTH_SHORT).show()
             }
         }
         return v
@@ -181,17 +218,47 @@ class KittyDetailActivity : AppCompatActivity() {
             .show()
     }
 
+    private fun showSharesDialog(k: Kitty, m: Member) {
+        val input = EditText(this)
+        input.hint = "Shares (0.5, 1, 1.5, 2, ...)"
+        input.inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+        input.setText(m.shares.toString())
+        AlertDialog.Builder(this)
+            .setTitle("Shares — ${m.name}")
+            .setMessage("Doubles pay twice & collect twice. A half share splits one slot — two half shares share a payout.")
+            .setView(input)
+            .setPositiveButton("Save") { _, _ ->
+                val shares = input.text.toString().trim().toDoubleOrNull()
+                if (shares != null && shares >= 0.5) {
+                    val idx = k.members.indexOf(m)
+                    if (idx >= 0) {
+                        k.members[idx] = m.copy(shares = roundHalf(shares))
+                        KittyStore.update()
+                        render()
+                    }
+                } else {
+                    Toast.makeText(this, "Shares must be at least 0.5", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
     private fun showAddMemberDialog() {
         val k = kitty ?: return
         val input = EditText(this)
-        input.hint = "Member name"
+        input.hint = "Member name(s), separated by commas"
         AlertDialog.Builder(this)
-            .setTitle("Add Member")
+            .setTitle("Add Member(s)")
+            .setMessage("Type several names separated by commas to set up big committees fast.")
             .setView(input)
             .setPositiveButton("Add") { _, _ ->
-                val name = input.text.toString().trim()
-                if (name.isNotEmpty()) {
-                    k.members.add(Member(name = name))
+                val names = input.text.toString()
+                    .split(',', '\n')
+                    .map { it.trim() }
+                    .filter { it.isNotEmpty() }
+                if (names.isNotEmpty()) {
+                    names.forEach { k.members.add(Member(name = it)) }
                     KittyStore.update()
                     render()
                 }
@@ -207,11 +274,23 @@ class KittyDetailActivity : AppCompatActivity() {
             return
         }
         val index = engine.nextCycleIndex(k)
-        val payeeId = k.payoutForCycle(index) ?: return
-        k.cycles.add(Cycle(index = index, payoutMemberId = payeeId))
+        val payees = engine.payeesForCycle(k, index)
+        if (payees.isEmpty()) return
+        val cycle = Cycle(index = index, payoutMemberId = payees.first().memberId)
+        cycle.payouts.clear()
+        cycle.payouts.addAll(payees)
+        k.cycles.add(cycle)
         KittyStore.update()
         render()
     }
+
+    private fun roundHalf(v: Double): Double = Math.round(v * 2) / 2.0
+
+    private fun labelFor(name: String, fraction: Double): String =
+        if (fraction >= 1.0) name else "$name (half)"
+
+    private fun fmt(n: Double): String =
+        if (n == n.toLong().toDouble()) n.toLong().toString() else n.toString()
 
     private fun formatTime(millis: Long): String {
         val fmt = SimpleDateFormat("d MMM, hh:mm a", Locale.getDefault())

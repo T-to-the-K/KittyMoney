@@ -39,12 +39,14 @@ class KittyRepository(private val context: Context) {
         val o = JSONObject()
         o.put("id", k.id)
         o.put("name", k.name)
+        o.put("shareAmount", k.shareAmount)
 
         val members = JSONArray()
         k.members.forEach { m ->
             val mo = JSONObject()
             mo.put("id", m.id)
             mo.put("name", m.name)
+            mo.put("shares", m.shares)
             members.put(mo)
         }
         o.put("members", members)
@@ -55,6 +57,14 @@ class KittyRepository(private val context: Context) {
             co.put("index", c.index)
             co.put("payoutMemberId", c.payoutMemberId)
             co.put("isClosed", c.isClosed)
+            val payouts = JSONArray()
+            c.payouts.forEach { p ->
+                val po = JSONObject()
+                po.put("memberId", p.memberId)
+                po.put("fraction", p.fraction)
+                payouts.put(po)
+            }
+            co.put("payouts", payouts)
             val contributions = JSONArray()
             c.contributions.values.forEach { con ->
                 val cono = JSONObject()
@@ -77,12 +87,17 @@ class KittyRepository(private val context: Context) {
         if (ma != null) {
             for (i in 0 until ma.length()) {
                 val m = ma.getJSONObject(i)
-                members.add(Member(m.optString("id"), m.optString("name")))
+                members.add(Member(id = m.optString("id"), name = m.optString("name"), shares = m.optDouble("shares", 1.0)))
             }
         }
+        // Legacy migration: v1.0 stored a fixed "contributionAmount"; reuse it as the per-share amount.
+        val shareAmount =
+            if (o.has("shareAmount")) o.optDouble("shareAmount")
+            else o.optDouble("contributionAmount")
         val k = Kitty(
             id = o.optString("id"),
             name = o.optString("name"),
+            shareAmount = shareAmount,
             members = members
         )
         val ca = o.optJSONArray("cycles")
@@ -94,6 +109,14 @@ class KittyRepository(private val context: Context) {
                     payoutMemberId = c.optString("payoutMemberId")
                 )
                 cycle.isClosed = c.optBoolean("isClosed")
+                val pa = c.optJSONArray("payouts")
+                if (pa != null && pa.length() > 0) {
+                    cycle.payouts.clear()
+                    for (j in 0 until pa.length()) {
+                        val po = pa.getJSONObject(j)
+                        cycle.payouts.add(Payout(po.optString("memberId"), po.optDouble("fraction", 1.0)))
+                    }
+                }
                 val cona = c.optJSONArray("contributions")
                 if (cona != null) {
                     for (j in 0 until cona.length()) {

@@ -12,6 +12,20 @@ class KittyEngine {
             c.contributions[memberId]?.amount ?: 0.0
         }
 
+    /** Number of cycles in a full rotation (one payout per slot across members' shares). */
+    fun rotationLength(kitty: Kitty): Int = kitty.buildSchedule().size
+
+    /** Payees for the next/new cycle at the given slot index. Each has a pot fraction. */
+    fun payeesForCycle(kitty: Kitty, cycleIndex: Int): List<Payout> =
+        kitty.payeesForCycle(cycleIndex)
+
+    /** The amount a member is expected to contribute per cycle given their shares. 0 = any amount. */
+    fun expectedContribution(kitty: Kitty, member: Member): Double =
+        if (kitty.shareAmount > 0) kitty.shareAmount * member.shares else 0.0
+
+    /** The full pot a cycle collects when every member pays their shares. */
+    fun potExpected(kitty: Kitty): Double = kitty.totalShares() * kitty.shareAmount
+
     /** Whether every member has contributed to the given cycle. */
     fun isCycleComplete(kitty: Kitty, cycle: Cycle): Boolean =
         kitty.members.isNotEmpty() &&
@@ -41,20 +55,17 @@ class KittyEngine {
     /** How many members have been paid out across all cycles. */
     fun payoutsMade(kitty: Kitty): Int = kitty.cycles.count { it.isClosed }
 
-    /** The kitty's running total balance: everything collected minus nothing outstanding. */
+    /** The kitty's running total balance: everything collected. */
     fun runningBalance(kitty: Kitty): Double =
         kitty.cycles.sumOf { it.contributions.values.sumOf { c -> c.amount } }
 
     /** Next cycle index to open (one past the last existing cycle). */
     fun nextCycleIndex(kitty: Kitty): Int = kitty.cycles.size
 
-    /** Whether the kitty is rotationally balanced (each payee has had one turn). */
+    /** Whether a full rotation has been paid out. */
     fun isRotationBalanced(kitty: Kitty): Boolean {
         if (kitty.members.isEmpty()) return true
-        val received = HashSet<String>()
-        kitty.cycles.forEach { c ->
-            if (c.isClosed) received.add(c.payoutMemberId)
-        }
-        return received.size == kitty.members.size
+        val closed = kitty.cycles.count { it.isClosed }
+        return closed >= rotationLength(kitty)
     }
 }

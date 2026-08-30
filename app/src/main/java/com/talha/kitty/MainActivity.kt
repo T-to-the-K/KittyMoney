@@ -50,6 +50,7 @@ class MainActivity : AppCompatActivity() {
         val inflater = LayoutInflater.from(this)
         val view = inflater.inflate(R.layout.dialog_add_kitty, null)
         val name = view.findViewById<EditText>(R.id.etName)
+        val share = view.findViewById<EditText>(R.id.etShareAmount)
 
         AlertDialog.Builder(this)
             .setTitle("New Kitty")
@@ -57,7 +58,8 @@ class MainActivity : AppCompatActivity() {
             .setPositiveButton("Create") { _, _ ->
                 val kittyName = name.text.toString().trim()
                 if (kittyName.isNotEmpty()) {
-                    KittyStore.add(Kitty(name = kittyName))
+                    val shareAmount = share.text.toString().trim().toDoubleOrNull() ?: 0.0
+                    KittyStore.add(Kitty(name = kittyName, shareAmount = shareAmount.coerceAtLeast(0.0)))
                     refresh()
                 }
             }
@@ -83,12 +85,23 @@ class MainActivity : AppCompatActivity() {
         override fun onBindViewHolder(holder: VH, position: Int) {
             val k = items[position]
             holder.name.text = k.name
-            holder.meta.text = "${k.members.size} members · each adds any amount"
+            holder.meta.text = buildString {
+                append("${k.members.size} members")
+                if (k.shareAmount > 0) {
+                    append(" · ${fmt(k.totalShares())} shares · ${fmt(k.shareAmount)}/share")
+                } else {
+                    append(" · any amount")
+                }
+            }
 
-            val nextPayee = k.payoutForCycle(engine.nextCycleIndex(k))
-            val nextName = k.members.firstOrNull { it.id == nextPayee }?.name
-            if (nextName != null) {
-                holder.tag.text = "Next: $nextName"
+            val nextPayees = engine.payeesForCycle(k, engine.nextCycleIndex(k))
+            val nextNames = nextPayees.mapNotNull { p ->
+                k.members.firstOrNull { it.id == p.memberId }?.name?.let { n ->
+                    if (p.fraction >= 1.0) n else "$n (half)"
+                }
+            }
+            if (nextNames.isNotEmpty()) {
+                holder.tag.text = "Next: ${nextNames.joinToString(" & ")}"
                 holder.tag.setTextColor(if (engine.isRotationBalanced(k)) 0xFF3E9B6E.toInt() else 0xFFD9A11C.toInt())
             } else {
                 holder.tag.text = "New"
@@ -122,4 +135,7 @@ class MainActivity : AppCompatActivity() {
             val tag: TextView = v.findViewById(R.id.tvTag)
         }
     }
+
+    private fun fmt(n: Double): String =
+        if (n == n.toLong().toDouble()) n.toLong().toString() else n.toString()
 }

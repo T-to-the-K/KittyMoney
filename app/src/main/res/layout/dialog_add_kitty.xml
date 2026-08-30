@@ -11,4 +11,20 @@
         android:layout_height="wrap_content"
         android:hint="Kitty name (e.g. Family Fund)" />
 
+    <EditText
+        android:id="@+id/etShareAmount"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Amount per full share per cycle (optional)"
+        android:inputType="numberDecimal"
+        android:layout_marginTop="12dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="Leave blank for any-amount mode. Members can hold multiple shares (2 = double slot) or half shares."
+        android:textSize="12sp"
+        android:textColor="@color/warm_subtext" />
+
 </LinearLayout>
