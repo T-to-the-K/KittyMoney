@@ -240,12 +240,12 @@ class KittyDetailActivity : AppCompatActivity() {
 
     private fun showContributionDialog(k: Kitty, cycle: Cycle, m: Member) {
         val input = EditText(this)
-        input.hint = "Amount ${m.name} actually gave"
+        input.hint = "Amount ${m.name} gave"
         input.inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
         val existing = cycle.contributions[m.id]?.amount
         if (existing != null && existing > 0) input.setText(existing.toString())
         alertWithTitle("Contribution — ${m.name}",
-            "It's on the manager: record what ${m.name} actually gave (full, half, or anything in between). Leave blank or 0 to remove.",
+            "Type the amount paid. Empty clears it.",
             input,
             k, cycle, m)
     }
@@ -277,7 +277,7 @@ class KittyDetailActivity : AppCompatActivity() {
         input.setText(m.shares.toString())
         AlertDialog.Builder(this)
             .setTitle("Shares — ${m.name}")
-            .setMessage("Doubles pay twice & collect twice. A half share splits one slot — two half shares share a payout.")
+            .setMessage("Doubles pay & collect twice. Two halves share one slot.")
             .setView(input)
             .setPositiveButton("Save") { _, _ ->
                 val shares = input.text.toString().trim().toDoubleOrNull()
@@ -311,7 +311,7 @@ class KittyDetailActivity : AppCompatActivity() {
         input.inputType = android.text.InputType.TYPE_CLASS_NUMBER
         AlertDialog.Builder(this)
             .setTitle("Adopt running kitty")
-            .setMessage("How many months of this kitty have already been paid out before you started using the app? Those months become done-only records and their money stays outside the app.")
+            .setMessage("Months already paid out before you started using the app.")
             .setView(input)
             .setPositiveButton("Adopt") { _, _ ->
                 val months = input.text.toString().trim().toIntOrNull()
@@ -331,10 +331,10 @@ class KittyDetailActivity : AppCompatActivity() {
     private fun showAddMemberDialog() {
         val k = kitty ?: return
         val input = EditText(this)
-        input.hint = "Member names (one per line)"
+        input.hint = "One member per line"
         AlertDialog.Builder(this)
             .setTitle("Add Member(s)")
-            .setMessage("One name per line. Two people sharing a half share go on one line as \"Name1, Name2\" — the comma makes them a half pair.")
+            .setMessage("Name = full share · \"A, B\" = half pair")
             .setView(input)
             .setPositiveButton("Add") { _, _ ->
                 val added = parseMembers(input.text.toString())
