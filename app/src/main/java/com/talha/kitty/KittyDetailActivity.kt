@@ -87,15 +87,19 @@ class KittyDetailActivity : AppCompatActivity() {
 
         val activeIdx = activeMonthIndex(k)
         val payees = activePayees(k, activeIdx)
-        val names = payees.mapNotNull { p ->
-            k.members.firstOrNull { it.id == p.memberId }?.name?.let { n -> labelFor(n, p.fraction) }
-        }
         tvNextPayout.text =
-            if (names.isNotEmpty()) {
-                val partial = payees.any { it.fraction < 1.0 }
-                val size = if (partial && payees.size == 1) " (half pot)" else ""
-                val pot = if (k.potAmount > 0) " · pot ${fmt(engine.potExpected(k))}" else ""
-                "Month ${activeIdx + 1}:  ${names.joinToString(" & ")}$size$pot"
+            if (payees.isNotEmpty()) {
+                val receives =
+                    if (k.potAmount > 0)
+                        payees.joinToString(" & ") { p ->
+                            val n = k.members.firstOrNull { it.id == p.memberId }?.name ?: "?"
+                            "$n  →  ${fmt(engine.potExpected(k) * p.fraction)}"
+                        }
+                    else
+                        payees.mapNotNull { p ->
+                            k.members.firstOrNull { it.id == p.memberId }?.name?.let { n -> labelFor(n, p.fraction) }
+                        }.joinToString(" & ")
+                "Month ${activeIdx + 1}:  $receives"
             } else {
                 "Add members to see who collects this month."
             }
@@ -128,16 +132,11 @@ class KittyDetailActivity : AppCompatActivity() {
         val nameView = row.findViewById<TextView>(R.id.tvMemberName)
         nameView.text = "${m.name} — ${fmt(m.shares)} share${if (m.shares == 1.0) "" else "s"}"
         nameView.setTextColor(if (active) 0xFFC96A45.toInt() else 0xFF4A3F35.toInt())
-        val expected = engine.expectedContribution(k, m)
         val paid = engine.totalPaid(k, m.id)
         row.findViewById<TextView>(R.id.tvMemberStatus).text = buildString {
             if (active) {
                 append("◆ Collects Month ${activeMonth + 1}")
                 if (k.potAmount > 0) append(" · receives ${fmt(engine.potExpected(k) * activeFraction)}")
-            } else if (expected > 0) {
-                append("Expected ${fmt(expected)} per month")
-            } else {
-                append("Contributes any amount")
             }
             if (paid > 0) append(" · paid ${fmt(paid)} in total")
         }
@@ -200,13 +199,10 @@ class KittyDetailActivity : AppCompatActivity() {
             val row = Button(this)
             val contribution = cycle.contributions[m.id]
             val amount = contribution?.amount ?: 0.0
-            val expected = engine.expectedContribution(k, m)
             row.text = if (amount > 0)
                 "👤 ${m.name}\n   gave ${fmt(amount)} (${formatTime(contribution!!.paidAtMillis)})"
-            else if (expected > 0)
-                "👤 ${m.name} · ${fmt(m.shares)} share${if (m.shares == 1.0) "" else "s"} (expected ${fmt(expected)})\n   tap to enter amount"
             else
-                "👤 ${m.name}\n   tap to enter amount"
+                "👤 ${m.name} · ${fmt(m.shares)} share${if (m.shares == 1.0) "" else "s"}\n   tap to enter amount"
             row.setBackgroundResource(R.drawable.bg_tag)
             row.setTextColor(if (amount > 0) 0xFF3E9B6E.toInt() else 0xFFC4685A.toInt())
             row.isEnabled = !frozen
@@ -238,17 +234,12 @@ class KittyDetailActivity : AppCompatActivity() {
 
     private fun showContributionDialog(k: Kitty, cycle: Cycle, m: Member) {
         val input = EditText(this)
-        input.hint = "Amount ${m.name} can give"
+        input.hint = "Amount ${m.name} actually gave"
         input.inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
-        val expected = engine.expectedContribution(k, m)
         val existing = cycle.contributions[m.id]?.amount
         if (existing != null && existing > 0) input.setText(existing.toString())
-        else if (expected > 0) input.setText(fmt(expected))
         alertWithTitle("Contribution — ${m.name}",
-            if (k.potAmount > 0)
-                "This kitty's rule: ${m.name} gives exactly ${fmt(expected)} per month. Anything else is rejected so the month's pot comes out to ${fmt(k.potAmount)}."
-            else
-                "Enter any amount. Leave blank or 0 to remove.",
+            "It's on the manager: record what ${m.name} actually gave (full, half, or anything in between). Leave blank or 0 to remove.",
             input,
             k, cycle, m)
     }
@@ -262,13 +253,7 @@ class KittyDetailActivity : AppCompatActivity() {
                 val text = input.text.toString().trim()
                 val amount = text.toDoubleOrNull() ?: 0.0
                 if (amount > 0) {
-                    if (!engine.recordPayment(k, cycle, m.id, amount)) {
-                        Toast.makeText(
-                            this,
-                            "Rejected: ${m.name} must give exactly ${fmt(engine.expectedContribution(k, m))} per month",
-                            Toast.LENGTH_LONG
-                        ).show()
-                    }
+                    engine.recordPayment(k, cycle, m.id, amount)
                 } else {
                     engine.undoPayment(k, cycle, m.id)
                 }

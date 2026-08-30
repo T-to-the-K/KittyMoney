@@ -31,7 +31,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:text="The pot is what the collector receives each month. It sets each member's payment: full share pays (pot ÷ total shares), half pays half — the app enforces it. Leave blank for any-amount mode. Shares still apply (2 = double slot, 0.5 = half)."
+        android:text="The pot is what each collector receives each month: a full share collects the pot, a half share collects half of it. It does not set fixed contributions — the manager records what each person actually gave. Leave blank for free-form (no fixed pot). Shares still apply (2 = double slot, 0.5 = half)."
         android:textSize="12sp"
         android:textColor="@color/warm_subtext" />
 

@@ -94,21 +94,34 @@ class KittyEngineTest {
     }
 
     @Test
-    fun `fixed kitty rejects payments that break the monthly pot`() {
-        val k = Kitty(name = "Fixed", potAmount = 30.0)
+    fun `pot kitty lets the manager record any amount`() {
+        val k = Kitty(name = "Pot", potAmount = 3000.0)
         k.members.add(Member(id = "a", name = "A"))
-        k.members.add(Member(id = "b", name = "B"))
-        k.members.add(Member(id = "c", name = "C"))
+        k.members.add(Member(id = "b", name = "B", shares = 0.5))
         val cycle = Cycle(index = 0, payoutMemberId = "a")
         k.cycles.add(cycle)
 
-        assertTrue(engine.isExactPayment(k, k.members[0], 10.0))
-        assertFalse(engine.isExactPayment(k, k.members[0], 9.0))
-        assertFalse(engine.isExactPayment(k, k.members[0], 11.0))
-        assertFalse(engine.recordPayment(k, cycle, "a", 9.0))
-        assertFalse(cycle.contributions.containsKey("a"))
-        assertTrue(engine.recordPayment(k, cycle, "a", 10.0))
-        assertTrue(cycle.contributions.containsKey("a"))
+        assertTrue(engine.recordPayment(k, cycle, "a", 500.0))
+        assertTrue(engine.recordPayment(k, cycle, "a", 250.0))
+        assertTrue(engine.recordPayment(k, cycle, "b", 123.45))
+        assertEquals(250.0, cycle.contributions["a"]!!.amount, 0.001)
+        assertEquals(123.45, cycle.contributions["b"]!!.amount, 0.001)
+    }
+
+    @Test
+    fun `next collectors receive the pot or half the pot by share`() {
+        val k = Kitty(name = "Pot3000", potAmount = 3000.0)
+        k.members.add(Member(id = "a", name = "A"))
+        k.members.add(Member(id = "b", name = "B", shares = 0.5))
+        k.members.add(Member(id = "c", name = "C", shares = 0.5))
+
+        val single = k.payeesForCycle(0)
+        assertEquals(listOf("a"), single.map { it.memberId })
+        assertEquals(3000.0, engine.potExpected(k) * single[0].fraction, 0.001)
+
+        val halfPair = k.payeesForCycle(1)
+        assertEquals(listOf("b", "c"), halfPair.map { it.memberId })
+        halfPair.forEach { assertEquals(1500.0, engine.potExpected(k) * it.fraction, 0.001) }
     }
 
     @Test
