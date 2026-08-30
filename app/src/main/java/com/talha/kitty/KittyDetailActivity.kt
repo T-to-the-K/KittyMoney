@@ -61,10 +61,10 @@ class KittyDetailActivity : AppCompatActivity() {
         tvMeta.text = buildString {
             append("${k.members.size} members")
             if (k.members.isNotEmpty()) append(" · runs ${k.monthsTotal()} months")
-            if (k.shareAmount > 0) {
+            if (k.threshold > 0) {
                 val total = k.totalShares()
-                append(" · ${fmt(total)} shares · ${fmt(k.shareAmount)} per share")
-                append("\nExpected pot per month:  ${fmt(engine.potExpected(k))}")
+                append(" · ${fmt(total)} shares")
+                append("\nTarget:  ${fmt(k.threshold)}  ·  Pot per month:  ${fmt(engine.potExpected(k))}")
             } else {
                 append(" · members add any amount")
             }
@@ -74,9 +74,16 @@ class KittyDetailActivity : AppCompatActivity() {
         val closed = k.cycles.count { it.isClosed }
         val totalMonths = k.monthsTotal()
         val imported = k.monthsImported()
-        tvStats.text = "Total collected:  $collected\n" +
-            "Months done:  ${closed} / ${totalMonths}\n" +
-            "Imported before app:  $imported"
+        tvStats.text = buildString {
+            if (k.threshold > 0) {
+                append("Target:  ${fmt(k.threshold)}\n")
+                append("Collected:  ${fmt(collected)}  ·  Left:  ${fmt((k.threshold - collected).coerceAtLeast(0.0))}\n")
+            } else {
+                append("Total collected:  $collected\n")
+            }
+            append("Months done:  ${closed} / ${totalMonths}\n")
+            append("Imported before app:  $imported")
+        }
 
         val activeIdx = activeMonthIndex(k)
         val payees = activePayees(k, activeIdx)
@@ -87,7 +94,7 @@ class KittyDetailActivity : AppCompatActivity() {
             if (names.isNotEmpty()) {
                 val partial = payees.any { it.fraction < 1.0 }
                 val size = if (partial && payees.size == 1) " (half pot)" else ""
-                val pot = if (k.shareAmount > 0) " · pot ${fmt(engine.potExpected(k))}" else ""
+                val pot = if (k.threshold > 0) " · pot ${fmt(engine.potExpected(k))}" else ""
                 "Month ${activeIdx + 1}:  ${names.joinToString(" & ")}$size$pot"
             } else {
                 "Add members to see who collects this month."
@@ -126,7 +133,7 @@ class KittyDetailActivity : AppCompatActivity() {
         row.findViewById<TextView>(R.id.tvMemberStatus).text = buildString {
             if (active) {
                 append("◆ Collects Month ${activeMonth + 1}")
-                if (k.shareAmount > 0) append(" · receives ${fmt(engine.potExpected(k) * activeFraction)}")
+                if (k.threshold > 0) append(" · receives ${fmt(engine.potExpected(k) * activeFraction)}")
             } else if (expected > 0) {
                 append("Expected ${fmt(expected)} per month")
             } else {
@@ -171,7 +178,7 @@ class KittyDetailActivity : AppCompatActivity() {
         )
 
         if (cycle.imported) {
-            summary.text = if (k.shareAmount > 0)
+            summary.text = if (k.threshold > 0)
                 "Paid before the app · pot ${fmt(engine.potExpected(k))} handed over"
             else
                 "Paid before the app."
@@ -181,7 +188,7 @@ class KittyDetailActivity : AppCompatActivity() {
         }
 
         val pot = k.potCollected(cycle)
-        summary.text = if (k.shareAmount > 0)
+        summary.text = if (k.threshold > 0)
             "Collected ${fmt(pot)} of expected pot ${fmt(engine.potExpected(k))}"
         else
             "Collected so far:  ${fmt(pot)}"
@@ -233,17 +240,35 @@ class KittyDetailActivity : AppCompatActivity() {
         val input = EditText(this)
         input.hint = "Amount ${m.name} can give"
         input.inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+        val expected = engine.expectedContribution(k, m)
         val existing = cycle.contributions[m.id]?.amount
         if (existing != null && existing > 0) input.setText(existing.toString())
+        else if (expected > 0) input.setText(fmt(expected))
+        alertWithTitle("Contribution — ${m.name}",
+            if (k.threshold > 0)
+                "This kitty's rule: ${m.name} gives exactly ${fmt(expected)} per month. Anything else is rejected to keep the books on the ${fmt(k.threshold)} target."
+            else
+                "Enter any amount. Leave blank or 0 to remove.",
+            input,
+            k, cycle, m)
+    }
+
+    private fun alertWithTitle(title: String, message: String, input: EditText, k: Kitty, cycle: Cycle, m: Member) {
         AlertDialog.Builder(this)
-            .setTitle("Contribution — ${m.name}")
-            .setMessage("Enter any amount. Leave blank or 0 to remove.")
+            .setTitle(title)
+            .setMessage(message)
             .setView(input)
             .setPositiveButton("Save") { _, _ ->
                 val text = input.text.toString().trim()
                 val amount = text.toDoubleOrNull() ?: 0.0
                 if (amount > 0) {
-                    engine.recordPayment(k, cycle, m.id, amount)
+                    if (!engine.recordPayment(k, cycle, m.id, amount)) {
+                        Toast.makeText(
+                            this,
+                            "Rejected: ${m.name} must give exactly ${fmt(engine.expectedContribution(k, m))} per month",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
                 } else {
                     engine.undoPayment(k, cycle, m.id)
                 }

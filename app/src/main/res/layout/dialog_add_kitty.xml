@@ -12,18 +12,26 @@
         android:hint="Kitty name (e.g. Family Fund)" />
 
     <EditText
-        android:id="@+id/etShareAmount"
+        android:id="@+id/etTotalAmount"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Amount per full share per cycle (optional)"
+        android:hint="Total amount the kitty must reach (optional)"
         android:inputType="numberDecimal"
+        android:layout_marginTop="12dp" />
+
+    <EditText
+        android:id="@+id/etDuration"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Months it runs (optional, auto = one per member/slot)"
+        android:inputType="number"
         android:layout_marginTop="12dp" />
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:text="Leave blank for any-amount mode. Members can hold multiple shares (2 = double slot) or half shares."
+        android:text="The threshold sets each member's payment: full share pays (total ÷ months ÷ shares), half pays half — the app enforces it. Leave blank for any-amount mode. Shares still apply (2 = double slot, 0.5 = half)."
         android:textSize="12sp"
         android:textColor="@color/warm_subtext" />
 

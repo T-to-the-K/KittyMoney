@@ -9,8 +9,8 @@ class KittyEngineTest {
 
     private val engine = KittyEngine.instance
 
-    private fun kittyWith3Members(name: String = "Test", shareAmount: Double = 0.0): Kitty {
-        val k = Kitty(name = name, shareAmount = shareAmount)
+    private fun kittyWith3Members(name: String = "Test", threshold: Double = 0.0): Kitty {
+        val k = Kitty(name = name, threshold = threshold)
         k.members.add(Member(id = "a", name = "A"))
         k.members.add(Member(id = "b", name = "B"))
         k.members.add(Member(id = "c", name = "C"))
@@ -82,15 +82,43 @@ class KittyEngineTest {
     }
 
     @Test
-    fun `expected contribution scales with shares`() {
-        val k = Kitty(name = "Exp", shareAmount = 100.0)
+    fun `expected contribution derives from shares and threshold`() {
+        val k = Kitty(name = "Exp", threshold = 70.0, durationMonths = 2)
         k.members.add(Member(id = "a", name = "A"))
         k.members.add(Member(id = "b", name = "B", shares = 2.0))
         k.members.add(Member(id = "c", name = "C", shares = 0.5))
-        assertEquals(100.0, engine.expectedContribution(k, k.members[0]), 0.001)
-        assertEquals(200.0, engine.expectedContribution(k, k.members[1]), 0.001)
-        assertEquals(50.0, engine.expectedContribution(k, k.members[2]), 0.001)
-        assertEquals(350.0, engine.potExpected(k), 0.001)
+        assertEquals(10.0, engine.expectedContribution(k, k.members[0]), 0.001)
+        assertEquals(20.0, engine.expectedContribution(k, k.members[1]), 0.001)
+        assertEquals(5.0, engine.expectedContribution(k, k.members[2]), 0.001)
+        assertEquals(35.0, engine.potExpected(k), 0.001)
+    }
+
+    @Test
+    fun `fixed kitty rejects payments that break the threshold`() {
+        val k = Kitty(name = "Fixed", threshold = 90.0, durationMonths = 3)
+        k.members.add(Member(id = "a", name = "A"))
+        k.members.add(Member(id = "b", name = "B"))
+        k.members.add(Member(id = "c", name = "C"))
+        val cycle = Cycle(index = 0, payoutMemberId = "a")
+        k.cycles.add(cycle)
+
+        assertTrue(engine.isExactPayment(k, k.members[0], 10.0))
+        assertFalse(engine.isExactPayment(k, k.members[0], 9.0))
+        assertFalse(engine.isExactPayment(k, k.members[0], 11.0))
+        assertFalse(engine.recordPayment(k, cycle, "a", 9.0))
+        assertFalse(cycle.contributions.containsKey("a"))
+        assertTrue(engine.recordPayment(k, cycle, "a", 10.0))
+        assertTrue(cycle.contributions.containsKey("a"))
+    }
+
+    @Test
+    fun `any amount mode accepts any payment`() {
+        val k = kittyWith3Members()
+        val cycle = Cycle(index = 0, payoutMemberId = "a")
+        engine.recordPayment(k, cycle, "a", 123.45)
+        engine.recordPayment(k, cycle, "b", 1.0)
+        assertTrue(cycle.contributions.containsKey("a"))
+        assertTrue(cycle.contributions.containsKey("b"))
     }
 
     @Test

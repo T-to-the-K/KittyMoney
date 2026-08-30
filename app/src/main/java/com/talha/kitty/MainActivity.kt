@@ -32,6 +32,13 @@ class MainActivity : AppCompatActivity() {
         recycler.adapter = adapter
 
         findViewById<Button>(R.id.btnAdd).setOnClickListener { showAddKittyDialog() }
+        findViewById<Button>(R.id.btnBoard).setOnClickListener {
+            if (KittyStore.kitties.isEmpty()) {
+                android.widget.Toast.makeText(this, "Create a kitty first, then open the spreadsheet", android.widget.Toast.LENGTH_SHORT).show()
+            } else {
+                startActivity(Intent(this, BoardActivity::class.java))
+            }
+        }
         refresh()
     }
 
@@ -50,7 +57,8 @@ class MainActivity : AppCompatActivity() {
         val inflater = LayoutInflater.from(this)
         val view = inflater.inflate(R.layout.dialog_add_kitty, null)
         val name = view.findViewById<EditText>(R.id.etName)
-        val share = view.findViewById<EditText>(R.id.etShareAmount)
+        val total = view.findViewById<EditText>(R.id.etTotalAmount)
+        val duration = view.findViewById<EditText>(R.id.etDuration)
 
         AlertDialog.Builder(this)
             .setTitle("New Kitty")
@@ -58,8 +66,15 @@ class MainActivity : AppCompatActivity() {
             .setPositiveButton("Create") { _, _ ->
                 val kittyName = name.text.toString().trim()
                 if (kittyName.isNotEmpty()) {
-                    val shareAmount = share.text.toString().trim().toDoubleOrNull() ?: 0.0
-                    KittyStore.add(Kitty(name = kittyName, shareAmount = shareAmount.coerceAtLeast(0.0)))
+                    val threshold = total.text.toString().trim().toDoubleOrNull() ?: 0.0
+                    val months = duration.text.toString().trim().toIntOrNull() ?: 0
+                    KittyStore.add(
+                        Kitty(
+                            name = kittyName,
+                            threshold = threshold.coerceAtLeast(0.0),
+                            durationMonths = months.coerceAtLeast(0)
+                        )
+                    )
                     refresh()
                 }
             }
@@ -88,8 +103,8 @@ class MainActivity : AppCompatActivity() {
             holder.meta.text = buildString {
                 append("${k.members.size} members")
                 if (k.members.isNotEmpty()) append(" · ${k.monthsTotal()} months")
-                if (k.shareAmount > 0) {
-                    append(" · ${fmt(k.totalShares())} shares · ${fmt(k.shareAmount)}/share")
+                if (k.threshold > 0) {
+                    append(" · target ${fmt(k.threshold)} · ${fmt(k.totalShares())} shares")
                 } else {
                     append(" · any amount")
                 }

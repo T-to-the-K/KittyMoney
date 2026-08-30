@@ -19,12 +19,21 @@ class KittyEngine {
     fun payeesForCycle(kitty: Kitty, cycleIndex: Int): List<Payout> =
         kitty.payeesForCycle(cycleIndex)
 
-    /** The amount a member is expected to contribute per cycle given their shares. 0 = any amount. */
+    /** The amount a member is expected to contribute per month given their shares. 0 = any amount. */
     fun expectedContribution(kitty: Kitty, member: Member): Double =
-        if (kitty.shareAmount > 0) kitty.shareAmount * member.shares else 0.0
+        kitty.perFullShareMonth() * member.shares
 
-    /** The full pot a cycle collects when every member pays their shares. */
-    fun potExpected(kitty: Kitty): Double = kitty.totalShares() * kitty.shareAmount
+    /** The pot a collector receives per month (target / months). 0 = any amount. */
+    fun potExpected(kitty: Kitty): Double =
+        if (kitty.threshold > 0 && kitty.monthsTotal() > 0) kitty.threshold / kitty.monthsTotal() else 0.0
+
+    /** Whether an entered amount matches what the member's share requires to reach the threshold.
+     *  Free-form kits always accept everything. */
+    fun isExactPayment(kitty: Kitty, member: Member, amount: Double): Boolean {
+        if (kitty.threshold <= 0) return true
+        val expected = expectedContribution(kitty, member)
+        return Math.round(expected * 100) == Math.round(amount * 100)
+    }
 
     /** Whether every member has contributed to the given cycle. */
     fun isCycleComplete(kitty: Kitty, cycle: Cycle): Boolean =
@@ -32,11 +41,15 @@ class KittyEngine {
             kitty.members.all { cycle.contributions.containsKey(it.id) }
 
     /** Record a member's payment for a cycle. Creates or updates the contribution.
-     *  Closed cycles are frozen and cannot be changed. */
-    fun recordPayment(kitty: Kitty, cycle: Cycle, memberId: String, amount: Double, paidAtMillis: Long = System.currentTimeMillis()) {
-        if (cycle.isClosed) return
-        if (amount <= 0) return
+     *  Closed cycles are frozen. Fixed kits reject any amount that isn't the exact
+     *  share-based figure required to land on the threshold. */
+    fun recordPayment(kitty: Kitty, cycle: Cycle, memberId: String, amount: Double, paidAtMillis: Long = System.currentTimeMillis()): Boolean {
+        if (cycle.isClosed) return false
+        if (amount <= 0) return false
+        val member = kitty.members.firstOrNull { it.id == memberId } ?: return false
+        if (kitty.threshold > 0 && !isExactPayment(kitty, member, amount)) return false
         cycle.contributions[memberId] = Contribution(memberId, cycle.index, amount, paidAtMillis)
+        return true
     }
 
     /** Remove a member's recorded payment for a cycle. Closed cycles are frozen. */

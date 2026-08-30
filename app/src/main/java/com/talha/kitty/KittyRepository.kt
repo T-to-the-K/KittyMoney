@@ -39,7 +39,8 @@ class KittyRepository(private val context: Context) {
         val o = JSONObject()
         o.put("id", k.id)
         o.put("name", k.name)
-        o.put("shareAmount", k.shareAmount)
+        o.put("threshold", k.threshold)
+        o.put("durationMonths", k.durationMonths)
 
         val members = JSONArray()
         k.members.forEach { m ->
@@ -91,14 +92,25 @@ class KittyRepository(private val context: Context) {
                 members.add(Member(id = m.optString("id"), name = m.optString("name"), shares = m.optDouble("shares", 1.0)))
             }
         }
-        // Legacy migration: v1.0 stored a fixed "contributionAmount"; reuse it as the per-share amount.
-        val shareAmount =
-            if (o.has("shareAmount")) o.optDouble("shareAmount")
+        // Legacy migration: v1.x stored a fixed amount per share per cycle. Convert it
+        // into a threshold so that the derived per-share payment stays exactly the same.
+        val hasThreshold = o.has("threshold")
+        var threshold = if (hasThreshold) o.optDouble("threshold") else 0.0
+        if (!hasThreshold) {
+            val legacyShare = if (o.has("shareAmount")) o.optDouble("shareAmount")
             else o.optDouble("contributionAmount")
-        val k = Kitty(
+            if (legacyShare > 0) {
+                val k = Kitty(name = "ns", members = members)
+                val months = k.monthsTotal()
+                val shares = k.totalShares()
+                if (months > 0 && shares > 0) threshold = legacyShare * months * shares
+            }
+        }
+        var k = Kitty(
             id = o.optString("id"),
             name = o.optString("name"),
-            shareAmount = shareAmount,
+            threshold = threshold,
+            durationMonths = o.optInt("durationMonths", 0),
             members = members
         )
         val ca = o.optJSONArray("cycles")

@@ -19,6 +19,9 @@
         <activity
             android:name=".KittyDetailActivity"
             android:exported="false" />
+        <activity
+            android:name=".BoardActivity"
+            android:exported="false" />
     </application>
 
 </manifest>
