@@ -61,10 +61,10 @@ class KittyDetailActivity : AppCompatActivity() {
         tvMeta.text = buildString {
             append("${k.members.size} members")
             if (k.members.isNotEmpty()) append(" · runs ${k.monthsTotal()} months")
-            if (k.threshold > 0) {
+            if (k.potAmount > 0) {
                 val total = k.totalShares()
                 append(" · ${fmt(total)} shares")
-                append("\nTarget:  ${fmt(k.threshold)}  ·  Pot per month:  ${fmt(engine.potExpected(k))}")
+                append("\nPot to hand over each month:  ${fmt(engine.potExpected(k))}")
             } else {
                 append(" · members add any amount")
             }
@@ -75,9 +75,9 @@ class KittyDetailActivity : AppCompatActivity() {
         val totalMonths = k.monthsTotal()
         val imported = k.monthsImported()
         tvStats.text = buildString {
-            if (k.threshold > 0) {
-                append("Target:  ${fmt(k.threshold)}\n")
-                append("Collected:  ${fmt(collected)}  ·  Left:  ${fmt((k.threshold - collected).coerceAtLeast(0.0))}\n")
+            if (k.potAmount > 0) {
+                append("Pot per month:  ${fmt(k.potAmount)}\n")
+                append("Collected so far:  ${fmt(collected)}\n")
             } else {
                 append("Total collected:  $collected\n")
             }
@@ -94,7 +94,7 @@ class KittyDetailActivity : AppCompatActivity() {
             if (names.isNotEmpty()) {
                 val partial = payees.any { it.fraction < 1.0 }
                 val size = if (partial && payees.size == 1) " (half pot)" else ""
-                val pot = if (k.threshold > 0) " · pot ${fmt(engine.potExpected(k))}" else ""
+                val pot = if (k.potAmount > 0) " · pot ${fmt(engine.potExpected(k))}" else ""
                 "Month ${activeIdx + 1}:  ${names.joinToString(" & ")}$size$pot"
             } else {
                 "Add members to see who collects this month."
@@ -133,7 +133,7 @@ class KittyDetailActivity : AppCompatActivity() {
         row.findViewById<TextView>(R.id.tvMemberStatus).text = buildString {
             if (active) {
                 append("◆ Collects Month ${activeMonth + 1}")
-                if (k.threshold > 0) append(" · receives ${fmt(engine.potExpected(k) * activeFraction)}")
+                if (k.potAmount > 0) append(" · receives ${fmt(engine.potExpected(k) * activeFraction)}")
             } else if (expected > 0) {
                 append("Expected ${fmt(expected)} per month")
             } else {
@@ -178,7 +178,7 @@ class KittyDetailActivity : AppCompatActivity() {
         )
 
         if (cycle.imported) {
-            summary.text = if (k.threshold > 0)
+            summary.text = if (k.potAmount > 0)
                 "Paid before the app · pot ${fmt(engine.potExpected(k))} handed over"
             else
                 "Paid before the app."
@@ -188,7 +188,7 @@ class KittyDetailActivity : AppCompatActivity() {
         }
 
         val pot = k.potCollected(cycle)
-        summary.text = if (k.threshold > 0)
+        summary.text = if (k.potAmount > 0)
             "Collected ${fmt(pot)} of expected pot ${fmt(engine.potExpected(k))}"
         else
             "Collected so far:  ${fmt(pot)}"
@@ -245,8 +245,8 @@ class KittyDetailActivity : AppCompatActivity() {
         if (existing != null && existing > 0) input.setText(existing.toString())
         else if (expected > 0) input.setText(fmt(expected))
         alertWithTitle("Contribution — ${m.name}",
-            if (k.threshold > 0)
-                "This kitty's rule: ${m.name} gives exactly ${fmt(expected)} per month. Anything else is rejected to keep the books on the ${fmt(k.threshold)} target."
+            if (k.potAmount > 0)
+                "This kitty's rule: ${m.name} gives exactly ${fmt(expected)} per month. Anything else is rejected so the month's pot comes out to ${fmt(k.potAmount)}."
             else
                 "Enter any amount. Leave blank or 0 to remove.",
             input,

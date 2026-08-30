@@ -9,8 +9,8 @@ class KittyEngineTest {
 
     private val engine = KittyEngine.instance
 
-    private fun kittyWith3Members(name: String = "Test", threshold: Double = 0.0): Kitty {
-        val k = Kitty(name = name, threshold = threshold)
+    private fun kittyWith3Members(name: String = "Test", potAmount: Double = 0.0): Kitty {
+        val k = Kitty(name = name, potAmount = potAmount)
         k.members.add(Member(id = "a", name = "A"))
         k.members.add(Member(id = "b", name = "B"))
         k.members.add(Member(id = "c", name = "C"))
@@ -82,8 +82,8 @@ class KittyEngineTest {
     }
 
     @Test
-    fun `expected contribution derives from shares and threshold`() {
-        val k = Kitty(name = "Exp", threshold = 70.0, durationMonths = 2)
+    fun `expected contribution derives from shares and monthly pot`() {
+        val k = Kitty(name = "Exp", potAmount = 35.0)
         k.members.add(Member(id = "a", name = "A"))
         k.members.add(Member(id = "b", name = "B", shares = 2.0))
         k.members.add(Member(id = "c", name = "C", shares = 0.5))
@@ -94,8 +94,8 @@ class KittyEngineTest {
     }
 
     @Test
-    fun `fixed kitty rejects payments that break the threshold`() {
-        val k = Kitty(name = "Fixed", threshold = 90.0, durationMonths = 3)
+    fun `fixed kitty rejects payments that break the monthly pot`() {
+        val k = Kitty(name = "Fixed", potAmount = 30.0)
         k.members.add(Member(id = "a", name = "A"))
         k.members.add(Member(id = "b", name = "B"))
         k.members.add(Member(id = "c", name = "C"))

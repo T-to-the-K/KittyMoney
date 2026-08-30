@@ -77,26 +77,15 @@ class BoardActivity : AppCompatActivity() {
         totals.addView(cell(fmt(grand), bold = true))
         table.addView(totals)
 
-        val targets = TableRow(this)
-        targets.addView(cell("Target", bold = true))
-        var grandTarget = 0.0
+        val pots = TableRow(this)
+        pots.addView(cell("Pot / month", bold = true))
+        var grandPot = 0.0
         kitties.forEach { k ->
-            grandTarget += k.threshold
-            targets.addView(cell(if (k.threshold > 0) fmt(k.threshold) else "—"))
+            grandPot += k.potAmount
+            pots.addView(cell(if (k.potAmount > 0) fmt(k.potAmount) else "—"))
         }
-        targets.addView(cell(fmt(grandTarget)))
-        table.addView(targets)
-
-        val left = TableRow(this)
-        left.addView(cell("Left", bold = true))
-        var grandLeft = 0.0
-        kitties.forEach { k ->
-            val rem = if (k.threshold > 0) (k.threshold - engine.runningBalance(k)).coerceAtLeast(0.0) else 0.0
-            grandLeft += rem
-            left.addView(cell(if (k.threshold > 0) fmt(rem) else "—", color = 0xFFC4685A.toInt()))
-        }
-        left.addView(cell(fmt(grandLeft), color = 0xFFC4685A.toInt()))
-        table.addView(left)
+        pots.addView(cell(fmt(grandPot)))
+        table.addView(pots)
     }
 
     private fun fmt(n: Double): String =

@@ -22,7 +22,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Rows are members · one column per running kitty · totals and targets below"
+            android:text="Rows are members · one column per running kitty · totals and monthly pot below"
             android:textColor="@color/warm_subtext"
             android:textSize="13sp"
             android:layout_marginTop="2dp"

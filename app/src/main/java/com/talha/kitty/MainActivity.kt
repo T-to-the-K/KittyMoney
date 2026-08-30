@@ -66,12 +66,12 @@ class MainActivity : AppCompatActivity() {
             .setPositiveButton("Create") { _, _ ->
                 val kittyName = name.text.toString().trim()
                 if (kittyName.isNotEmpty()) {
-                    val threshold = total.text.toString().trim().toDoubleOrNull() ?: 0.0
+                    val pot = total.text.toString().trim().toDoubleOrNull() ?: 0.0
                     val months = duration.text.toString().trim().toIntOrNull() ?: 0
                     KittyStore.add(
                         Kitty(
                             name = kittyName,
-                            threshold = threshold.coerceAtLeast(0.0),
+                            potAmount = pot.coerceAtLeast(0.0),
                             durationMonths = months.coerceAtLeast(0)
                         )
                     )
@@ -103,8 +103,8 @@ class MainActivity : AppCompatActivity() {
             holder.meta.text = buildString {
                 append("${k.members.size} members")
                 if (k.members.isNotEmpty()) append(" · ${k.monthsTotal()} months")
-                if (k.threshold > 0) {
-                    append(" · target ${fmt(k.threshold)} · ${fmt(k.totalShares())} shares")
+                if (k.potAmount > 0) {
+                    append(" · pot ${fmt(k.potAmount)} per month · ${fmt(k.totalShares())} shares")
                 } else {
                     append(" · any amount")
                 }

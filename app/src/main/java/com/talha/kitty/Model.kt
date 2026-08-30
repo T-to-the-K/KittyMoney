@@ -43,8 +43,9 @@ data class Cycle(
 data class Kitty(
     val id: String = UUID.randomUUID().toString(),
     val name: String,
-    /** Total amount the kitty must generate (the threshold). 0 = free-form ("any amount") mode. */
-    val threshold: Double = 0.0,
+    /** Monthly pot handed to a full-share collector each month (payout slot).
+     *  0 = free-form ("any amount") mode. */
+    val potAmount: Double = 0.0,
     /** How many months the kitty runs. 0 = auto (one month per payout slot). */
     val durationMonths: Int = 0,
     val members: MutableList<Member> = ArrayList(),
@@ -98,12 +99,11 @@ data class Kitty(
     /** Total months in the kitty period. 0 duration = one month per payout slot. */
     fun monthsTotal(): Int = if (durationMonths > 0) durationMonths else buildSchedule().size
 
-    /** Derived payment per full share per month so the kitty lands exactly on [threshold].
-     *  0 when the kitty is in free-form mode. */
+    /** Derived payment per full share per month so each month's contributions add up
+     *  to exactly [potAmount]. 0 when the kitty is in free-form mode. */
     fun perFullShareMonth(): Double {
-        val months = monthsTotal()
         val shares = totalShares()
-        return if (threshold > 0 && months > 0 && shares > 0) threshold / (months * shares) else 0.0
+        return if (potAmount > 0 && shares > 0) potAmount / shares else 0.0
     }
 
     /** Months already paid out before the app was adopted. */

@@ -23,14 +23,14 @@ class KittyEngine {
     fun expectedContribution(kitty: Kitty, member: Member): Double =
         kitty.perFullShareMonth() * member.shares
 
-    /** The pot a collector receives per month (target / months). 0 = any amount. */
+    /** The pot a collector receives per month (the potAmount itself). 0 = any amount. */
     fun potExpected(kitty: Kitty): Double =
-        if (kitty.threshold > 0 && kitty.monthsTotal() > 0) kitty.threshold / kitty.monthsTotal() else 0.0
+        if (kitty.potAmount > 0) kitty.potAmount else 0.0
 
-    /** Whether an entered amount matches what the member's share requires to reach the threshold.
+    /** Whether an entered amount matches what the member's share requires to build the pot.
      *  Free-form kits always accept everything. */
     fun isExactPayment(kitty: Kitty, member: Member, amount: Double): Boolean {
-        if (kitty.threshold <= 0) return true
+        if (kitty.potAmount <= 0) return true
         val expected = expectedContribution(kitty, member)
         return Math.round(expected * 100) == Math.round(amount * 100)
     }
@@ -42,12 +42,12 @@ class KittyEngine {
 
     /** Record a member's payment for a cycle. Creates or updates the contribution.
      *  Closed cycles are frozen. Fixed kits reject any amount that isn't the exact
-     *  share-based figure required to land on the threshold. */
+     *  share-based figure required to build the monthly pot. */
     fun recordPayment(kitty: Kitty, cycle: Cycle, memberId: String, amount: Double, paidAtMillis: Long = System.currentTimeMillis()): Boolean {
         if (cycle.isClosed) return false
         if (amount <= 0) return false
         val member = kitty.members.firstOrNull { it.id == memberId } ?: return false
-        if (kitty.threshold > 0 && !isExactPayment(kitty, member, amount)) return false
+        if (kitty.potAmount > 0 && !isExactPayment(kitty, member, amount)) return false
         cycle.contributions[memberId] = Contribution(memberId, cycle.index, amount, paidAtMillis)
         return true
     }
