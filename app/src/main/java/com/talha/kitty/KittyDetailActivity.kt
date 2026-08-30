@@ -160,7 +160,13 @@ class KittyDetailActivity : AppCompatActivity() {
         val payeeLabels = cycle.payouts.mapNotNull { p ->
             k.members.firstOrNull { it.id == p.memberId }?.name?.let { n -> labelFor(n, p.fraction) }
         }
-        title.text = "Month ${cycle.index + 1} — pays ${payeeLabels.joinToString(" & ")}"
+        title.text = if (k.potAmount > 0)
+            "Month ${cycle.index + 1} — pays ${cycle.payouts.joinToString(" & ") { p ->
+                val n = k.members.firstOrNull { it.id == p.memberId }?.name ?: "?"
+                "$n  →  ${fmt(engine.potExpected(k) * p.fraction)}"
+            }}"
+        else
+            "Month ${cycle.index + 1} — pays ${payeeLabels.joinToString(" & ")}"
 
         val complete = engine.isCycleComplete(k, cycle)
         status.text = when {
@@ -325,24 +331,38 @@ class KittyDetailActivity : AppCompatActivity() {
     private fun showAddMemberDialog() {
         val k = kitty ?: return
         val input = EditText(this)
-        input.hint = "Member name(s), separated by commas"
+        input.hint = "Member names (one per line)"
         AlertDialog.Builder(this)
             .setTitle("Add Member(s)")
-            .setMessage("Type several names separated by commas to set up big committees fast.")
+            .setMessage("One name per line. Two people sharing a half share go on one line as \"Name1, Name2\" — the comma makes them a half pair.")
             .setView(input)
             .setPositiveButton("Add") { _, _ ->
-                val names = input.text.toString()
-                    .split(',', '\n')
-                    .map { it.trim() }
-                    .filter { it.isNotEmpty() }
-                if (names.isNotEmpty()) {
-                    names.forEach { k.members.add(Member(name = it)) }
+                val added = parseMembers(input.text.toString())
+                if (added.isNotEmpty()) {
+                    k.members.addAll(added)
                     KittyStore.update()
                     render()
                 }
             }
             .setNegativeButton("Cancel", null)
             .show()
+    }
+
+    /** A lone name = full share. "Name1, Name2" on one line = two people, half share each. */
+    private fun parseMembers(raw: String): List<Member> {
+        val result = ArrayList<Member>()
+        for (line in raw.split('\n')) {
+            val parts = line.split(',')
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+            if (parts.size == 2) {
+                result.add(Member(name = parts[0], shares = 0.5))
+                result.add(Member(name = parts[1], shares = 0.5))
+            } else {
+                parts.forEach { p -> result.add(Member(name = p)) }
+            }
+        }
+        return result
     }
 
     private fun addCycle() {

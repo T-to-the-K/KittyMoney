@@ -8,7 +8,7 @@ Made for family use: a lightweight, on-device way to keep records of who contrib
 
 - **Kitty groups** — create a group with a name and a **monthly pot** (the amount handed to a full-share collector each month), or leave it blank for free-form.
 - **Shares** — members hold 1 share by default; a double slot = 2 shares (pays double, collects twice), and half-shares split a slot (0.5 each, pay half, collect half).
-- **20-member model** — bulk-add members by pasting comma/newline-separated names to set up large committees fast.
+- **Bulk add** — paste members one per line to set up committees fast; two people on one line as "Name1, Name2" become a half-share pair (each pays half, and they share one payout slot).
 - **Rotation** — the app schedules payouts across every share slot in round-robin order and highlights next month's collector(s): a full share is one person receiving the pot, two half shares are highlighted together each receiving half of it.
 - **Monthly timeline** — a kitty runs for as many months as it has payout slots (total shares), or for the run-length you set. The member(s) collecting the current month get a highlighted row.
 - **Manager records payments** — the app never pre-sets or rejects amounts; the manager types what each person actually gave (full, half, or anything). The pot is only used to tell everyone what the payout will be.
