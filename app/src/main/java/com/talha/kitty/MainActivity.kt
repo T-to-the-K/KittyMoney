@@ -87,6 +87,7 @@ class MainActivity : AppCompatActivity() {
             holder.name.text = k.name
             holder.meta.text = buildString {
                 append("${k.members.size} members")
+                if (k.members.isNotEmpty()) append(" · ${k.monthsTotal()} months")
                 if (k.shareAmount > 0) {
                     append(" · ${fmt(k.totalShares())} shares · ${fmt(k.shareAmount)}/share")
                 } else {
@@ -94,14 +95,16 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
-            val nextPayees = engine.payeesForCycle(k, engine.nextCycleIndex(k))
+            val open = k.cycles.lastOrNull()?.takeIf { !it.isClosed }
+            val nextPayees = open?.payouts ?: k.payeesForCycle(k.cycles.size)
+            val monthNo = if (open != null) open.index + 1 else k.cycles.size + 1
             val nextNames = nextPayees.mapNotNull { p ->
                 k.members.firstOrNull { it.id == p.memberId }?.name?.let { n ->
                     if (p.fraction >= 1.0) n else "$n (half)"
                 }
             }
             if (nextNames.isNotEmpty()) {
-                holder.tag.text = "Next: ${nextNames.joinToString(" & ")}"
+                holder.tag.text = "Month $monthNo: ${nextNames.joinToString(" & ")}"
                 holder.tag.setTextColor(if (engine.isRotationBalanced(k)) 0xFF3E9B6E.toInt() else 0xFFD9A11C.toInt())
             } else {
                 holder.tag.text = "New"

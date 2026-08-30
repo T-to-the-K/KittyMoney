@@ -10,10 +10,12 @@ Made for family use: a lightweight, on-device way to keep records of who contrib
 - **Shares** — members hold 1 share by default; a double slot = 2 shares (pays double, collects twice), and half-shares split a slot (0.5 each, pay half, collect half).
 - **20-member model** — bulk-add members by pasting comma/newline-separated names to set up large committees fast.
 - **Rotation** — the app schedules payouts across every share slot in round-robin order and shows who's next and what pot to expect.
+- **Monthly timeline** — a kitty runs for as many months as it has payout slots (total shares). The member(s) collecting the current month get a highlighted row.
 - **Members** — add, bulk-add, or remove members, and change anyone's shares at any time.
-- **Cycles** — start a new cycle; the app auto-assigns the payee(s) from the share rotation.
-- **Payments** — tick each member off once they contribute to a cycle (they can give any amount).
-- **Balance** — see how much has been collected and completed cycles.
+- **Months** — start one month (cycle) at a time; the app auto-assigns the payee(s) from the share rotation and labels each month "Month N of M".
+- **Adopt a running kitty** — already mid-way through a kitty that started before the app? Tell the app how many months are already done: they're marked "done · before app" and the rotation continues from the current month.
+- **Payments** — tick each member off once they contribute to a month (they can give any amount).
+- **Balance** — see how much has been collected and completed months.
 - **Local persistence** — all records are saved on the device (JSON in app storage). No accounts, no cloud.
 
 ## Build

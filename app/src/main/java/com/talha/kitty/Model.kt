@@ -31,7 +31,9 @@ data class Cycle(
     val payoutMemberId: String,
     val payouts: MutableList<Payout> = ArrayList(),
     val contributions: MutableMap<String, Contribution> = HashMap(),
-    var isClosed: Boolean = false
+    var isClosed: Boolean = false,
+    /** True for months that were paid out before this app was adopted. Frozen history. */
+    var imported: Boolean = false
 ) {
     init {
         if (payouts.isEmpty()) payouts.add(Payout(payoutMemberId, 1.0))
@@ -90,4 +92,34 @@ data class Kitty(
 
     fun potCollected(cycle: Cycle): Double =
         cycle.contributions.values.sumOf { it.amount }
+
+    /** Total months in one full rotation (one month per payout slot). */
+    fun monthsTotal(): Int = buildSchedule().size
+
+    /** Months already paid out before the app was adopted. */
+    fun monthsImported(): Int = cycles.count { it.imported }
+
+    /**
+     * Seed history for a kitty that was already running before this app:
+     * marks the first [completed] months as closed, imported cycles whose payees
+     * follow the share schedule. Returns how many months were seeded.
+     */
+    fun seedImportedMonths(completed: Int): Int {
+        if (completed <= 0 || cycles.isNotEmpty()) return 0
+        val schedule = buildSchedule()
+        for (i in 0 until completed) {
+            val payees = if (schedule.isNotEmpty()) schedule[i % schedule.size]
+            else mutableListOf(Payout("", 1.0))
+            val cycle = Cycle(
+                index = i,
+                payoutMemberId = payees.first().memberId,
+                isClosed = true,
+                imported = true
+            )
+            cycle.payouts.clear()
+            cycle.payouts.addAll(payees)
+            cycles.add(cycle)
+        }
+        return completed
+    }
 }

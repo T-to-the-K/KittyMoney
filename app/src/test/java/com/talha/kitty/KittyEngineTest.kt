@@ -216,4 +216,56 @@ class KittyEngineTest {
         assertTrue(c0.contributions.containsKey("b"))
         assertTrue(c0.contributions.containsKey("c"))
     }
+
+    @Test
+    fun `months total equals payout slots`() {
+        val k = kittyWith3Members()
+        assertEquals(3, k.monthsTotal())
+        k.members.add(Member(id = "d", name = "D", shares = 2.0))
+        assertEquals(5, k.monthsTotal())
+    }
+
+    @Test
+    fun `seedImportedMonths marks completed months as done and continues rotation`() {
+        val k = kittyWith3Members()
+        val seeded = k.seedImportedMonths(2)
+        assertEquals(2, seeded)
+        assertEquals(2, k.cycles.size)
+        assertTrue(k.cycles.all { it.isClosed && it.imported })
+        assertEquals("a", k.cycles[0].payouts.single().memberId)
+        assertEquals("b", k.cycles[1].payouts.single().memberId)
+        assertEquals(2, k.monthsImported())
+        assertEquals("c", engine.payeesForCycle(k, k.cycles.size).single().memberId)
+    }
+
+    @Test
+    fun `seedImportedMonths pairs half shares and stays closed`() {
+        val k = Kitty(name = "Split")
+        k.members.add(Member(id = "a", name = "A", shares = 0.5))
+        k.members.add(Member(id = "b", name = "B", shares = 0.5))
+        k.members.add(Member(id = "c", name = "C"))
+        val seeded = k.seedImportedMonths(2)
+        assertEquals(2, seeded)
+        val second = k.cycles[1].payouts
+        assertEquals(2, second.size)
+        assertEquals("a", second[0].memberId)
+        assertEquals("b", second[1].memberId)
+        assertTrue(k.cycles[1].isClosed)
+        assertTrue(k.cycles[1].imported)
+    }
+
+    @Test
+    fun `seedImportedMonths refuses once months are already open`() {
+        val k = kittyWith3Members()
+        k.cycles.add(Cycle(index = 0, payoutMemberId = "a"))
+        assertEquals(0, k.seedImportedMonths(2))
+        assertEquals(1, k.cycles.size)
+    }
+
+    @Test
+    fun `seedImportedMonths with zero does nothing`() {
+        val k = kittyWith3Members()
+        assertEquals(0, k.seedImportedMonths(0))
+        assertTrue(k.cycles.isEmpty())
+    }
 }

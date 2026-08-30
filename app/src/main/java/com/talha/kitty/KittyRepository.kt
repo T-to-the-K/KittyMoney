@@ -57,6 +57,7 @@ class KittyRepository(private val context: Context) {
             co.put("index", c.index)
             co.put("payoutMemberId", c.payoutMemberId)
             co.put("isClosed", c.isClosed)
+            co.put("imported", c.imported)
             val payouts = JSONArray()
             c.payouts.forEach { p ->
                 val po = JSONObject()
@@ -109,6 +110,7 @@ class KittyRepository(private val context: Context) {
                     payoutMemberId = c.optString("payoutMemberId")
                 )
                 cycle.isClosed = c.optBoolean("isClosed")
+                cycle.imported = c.optBoolean("imported")
                 val pa = c.optJSONArray("payouts")
                 if (pa != null && pa.length() > 0) {
                     cycle.payouts.clear()

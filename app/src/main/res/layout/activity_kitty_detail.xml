@@ -88,10 +88,19 @@
             android:text="+ Add Member"
             android:textStyle="bold" />
 
+        <Button
+            android:id="@+id/btnAdopt"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:backgroundTint="@color/warm_amber"
+            android:textColor="@color/warm_text"
+            android:text="+ Adopt Running Kitty (already started)"
+            android:textStyle="bold" />
+
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="CYCLES"
+            android:text="CYCLES (1 per month)"
             android:textStyle="bold"
             android:textColor="@color/warm_primary_dark"
             android:textSize="13sp"

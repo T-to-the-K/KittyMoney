@@ -51,6 +51,7 @@ class KittyDetailActivity : AppCompatActivity() {
 
         findViewById<Button>(R.id.btnAddMember).setOnClickListener { showAddMemberDialog() }
         findViewById<Button>(R.id.btnAddCycle).setOnClickListener { addCycle() }
+        findViewById<Button>(R.id.btnAdopt).setOnClickListener { showAdoptDialog() }
         render()
     }
 
@@ -59,24 +60,26 @@ class KittyDetailActivity : AppCompatActivity() {
         tvName.text = k.name
         tvMeta.text = buildString {
             append("${k.members.size} members")
+            if (k.members.isNotEmpty()) append(" · runs ${k.monthsTotal()} months")
             if (k.shareAmount > 0) {
                 val total = k.totalShares()
-                append(" · ${fmt(total)} shares overall · ${fmt(k.shareAmount)} per share")
-                append("\nExpected pot per cycle:  ${fmt(engine.potExpected(k))}")
+                append(" · ${fmt(total)} shares · ${fmt(k.shareAmount)} per share")
+                append("\nExpected pot per month:  ${fmt(engine.potExpected(k))}")
             } else {
                 append(" · members add any amount")
             }
         }
 
         val collected = engine.runningBalance(k)
-        val complete = k.cycles.count { it.isClosed }
-        val rotation = engine.rotationLength(k)
+        val closed = k.cycles.count { it.isClosed }
+        val totalMonths = k.monthsTotal()
+        val imported = k.monthsImported()
         tvStats.text = "Total collected:  $collected\n" +
-            "Cycles completed:  $complete / ${k.cycles.size}\n" +
-            "Full rotation:  $rotation payouts"
+            "Months done:  ${closed} / ${totalMonths}\n" +
+            "Imported before app:  $imported"
 
-        val nextIndex = engine.nextCycleIndex(k)
-        val payees = engine.payeesForCycle(k, nextIndex)
+        val activeIdx = activeMonthIndex(k)
+        val payees = activePayees(k, activeIdx)
         val names = payees.mapNotNull { p ->
             k.members.firstOrNull { it.id == p.memberId }?.name?.let { n -> labelFor(n, p.fraction) }
         }
@@ -85,27 +88,50 @@ class KittyDetailActivity : AppCompatActivity() {
                 val partial = payees.any { it.fraction < 1.0 }
                 val size = if (partial && payees.size == 1) " (half pot)" else ""
                 val pot = if (k.shareAmount > 0) " · pot ${fmt(engine.potExpected(k))}" else ""
-                "Next payout:  ${names.joinToString(" & ")}$size$pot (cycle ${nextIndex + 1})"
+                "Month ${activeIdx + 1}:  ${names.joinToString(" & ")}$size$pot"
             } else {
-                "Add members to see who collects next."
+                "Add members to see who collects this month."
             }
 
         membersContainer.removeAllViews()
         k.members.forEach { m ->
-            membersContainer.addView(buildMemberRow(k, m))
+            val fraction = payees.firstOrNull { it.memberId == m.id }?.fraction ?: 0.0
+            membersContainer.addView(buildMemberRow(k, m, fraction, activeIdx))
         }
+
+        findViewById<Button>(R.id.btnAdopt).visibility = if (k.cycles.isEmpty()) View.VISIBLE else View.GONE
+        findViewById<Button>(R.id.btnAddCycle).text = "+ Start Month ${k.cycles.size + 1}"
 
         cyclesContainer.removeAllViews()
         k.cycles.forEach { cycle -> cyclesContainer.addView(buildCycleView(k, cycle)) }
     }
 
-    private fun buildMemberRow(k: Kitty, m: Member): View {
+    private fun activeMonthIndex(k: Kitty): Int =
+        k.cycles.lastOrNull()?.let { if (it.isClosed) null else it.index } ?: k.cycles.size
+
+    private fun activePayees(k: Kitty, activeIdx: Int): List<Payout> {
+        val open = k.cycles.lastOrNull()?.takeIf { !it.isClosed }
+        return open?.payouts ?: k.payeesForCycle(activeIdx)
+    }
+
+    private fun buildMemberRow(k: Kitty, m: Member, activeFraction: Double, activeMonth: Int): View {
         val row = LayoutInflater.from(this).inflate(R.layout.item_member, membersContainer, false)
-        row.findViewById<TextView>(R.id.tvMemberName).text = "${m.name} — ${fmt(m.shares)} share${if (m.shares == 1.0) "" else "s"}"
+        val active = activeFraction > 0
+        row.setBackgroundResource(if (active) R.drawable.bg_member_active else R.drawable.bg_card_soft)
+        val nameView = row.findViewById<TextView>(R.id.tvMemberName)
+        nameView.text = "${m.name} — ${fmt(m.shares)} share${if (m.shares == 1.0) "" else "s"}"
+        nameView.setTextColor(if (active) 0xFFC96A45.toInt() else 0xFF4A3F35.toInt())
         val expected = engine.expectedContribution(k, m)
         val paid = engine.totalPaid(k, m.id)
         row.findViewById<TextView>(R.id.tvMemberStatus).text = buildString {
-            if (expected > 0) append("Expected ${fmt(expected)} per cycle") else append("Contributes any amount")
+            if (active) {
+                append("◆ Collects Month ${activeMonth + 1}")
+                if (k.shareAmount > 0) append(" · receives ${fmt(engine.potExpected(k) * activeFraction)}")
+            } else if (expected > 0) {
+                append("Expected ${fmt(expected)} per month")
+            } else {
+                append("Contributes any amount")
+            }
             if (paid > 0) append(" · paid ${fmt(paid)} in total")
         }
         row.findViewById<Button>(R.id.btnShares).setOnClickListener { showSharesDialog(k, m) }
@@ -128,27 +154,37 @@ class KittyDetailActivity : AppCompatActivity() {
         val payeeLabels = cycle.payouts.mapNotNull { p ->
             k.members.firstOrNull { it.id == p.memberId }?.name?.let { n -> labelFor(n, p.fraction) }
         }
-        title.text = "Cycle ${cycle.index + 1} — pays ${payeeLabels.joinToString(" & ")}"
-
-        val pot = k.potCollected(cycle)
-        summary.text = if (k.shareAmount > 0)
-            "Collected ${fmt(pot)} of expected pot ${fmt(engine.potExpected(k))}"
-        else
-            "Collected so far:  ${fmt(pot)}"
+        title.text = "Month ${cycle.index + 1} — pays ${payeeLabels.joinToString(" & ")}"
 
         val complete = engine.isCycleComplete(k, cycle)
         status.text = when {
+            cycle.imported -> "Done · before app"
             cycle.isClosed -> "Done"
             complete -> "Ready"
             else -> "${k.members.size - cycle.contributions.size} to pay"
         }
         status.setTextColor(
             when {
-                cycle.isClosed -> 0xFF3E9B6E.toInt()
-                complete -> 0xFF3E9B6E.toInt()
+                cycle.imported || cycle.isClosed || complete -> 0xFF3E9B6E.toInt()
                 else -> 0xFFD9A11C.toInt()
             }
         )
+
+        if (cycle.imported) {
+            summary.text = if (k.shareAmount > 0)
+                "Paid before the app · pot ${fmt(engine.potExpected(k))} handed over"
+            else
+                "Paid before the app."
+            memberBox.visibility = View.GONE
+            btnClose.visibility = View.GONE
+            return v
+        }
+
+        val pot = k.potCollected(cycle)
+        summary.text = if (k.shareAmount > 0)
+            "Collected ${fmt(pot)} of expected pot ${fmt(engine.potExpected(k))}"
+        else
+            "Collected so far:  ${fmt(pot)}"
 
         memberBox.removeAllViews()
         val frozen = cycle.isClosed
@@ -238,6 +274,38 @@ class KittyDetailActivity : AppCompatActivity() {
                     }
                 } else {
                     Toast.makeText(this, "Shares must be at least 0.5", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showAdoptDialog() {
+        val k = kitty ?: return
+        if (k.members.isEmpty()) {
+            Toast.makeText(this, "Add your members first, then adopt the running kitty", Toast.LENGTH_LONG).show()
+            return
+        }
+        if (k.cycles.isNotEmpty()) {
+            Toast.makeText(this, "Adopt before starting months — months are already open", Toast.LENGTH_LONG).show()
+            return
+        }
+        val input = EditText(this)
+        input.hint = "Already-done months (e.g. 6)"
+        input.inputType = android.text.InputType.TYPE_CLASS_NUMBER
+        AlertDialog.Builder(this)
+            .setTitle("Adopt running kitty")
+            .setMessage("How many months of this kitty have already been paid out before you started using the app? Those months become done-only records and their money stays outside the app.")
+            .setView(input)
+            .setPositiveButton("Adopt") { _, _ ->
+                val months = input.text.toString().trim().toIntOrNull()
+                if (months != null && months >= 0) {
+                    val seeded = k.seedImportedMonths(months)
+                    KittyStore.update()
+                    render()
+                    if (seeded > 0) {
+                        Toast.makeText(this, "Marked $seeded months as done", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
             .setNegativeButton("Cancel", null)
