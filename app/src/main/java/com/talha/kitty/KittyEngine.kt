@@ -17,12 +17,6 @@ class KittyEngine {
         kitty.members.isNotEmpty() &&
             kitty.members.all { cycle.contributions.containsKey(it.id) }
 
-    /** The outstanding amount a member still owes for a given cycle. */
-    fun outstanding(kitty: Kitty, cycle: Cycle, memberId: String): Double {
-        val paid = cycle.contributions[memberId]?.amount ?: 0.0
-        return (kitty.contributionAmount - paid).coerceAtLeast(0.0)
-    }
-
     /** Record a member's payment for a cycle. Creates or updates the contribution.
      *  Closed cycles are frozen and cannot be changed. */
     fun recordPayment(kitty: Kitty, cycle: Cycle, memberId: String, amount: Double, paidAtMillis: Long = System.currentTimeMillis()) {

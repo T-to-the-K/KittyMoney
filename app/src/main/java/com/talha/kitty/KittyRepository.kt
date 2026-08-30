@@ -39,7 +39,6 @@ class KittyRepository(private val context: Context) {
         val o = JSONObject()
         o.put("id", k.id)
         o.put("name", k.name)
-        o.put("contributionAmount", k.contributionAmount)
 
         val members = JSONArray()
         k.members.forEach { m ->
@@ -84,7 +83,6 @@ class KittyRepository(private val context: Context) {
         val k = Kitty(
             id = o.optString("id"),
             name = o.optString("name"),
-            contributionAmount = o.optDouble("contributionAmount"),
             members = members
         )
         val ca = o.optJSONArray("cycles")

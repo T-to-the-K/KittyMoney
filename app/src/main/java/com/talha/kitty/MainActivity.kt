@@ -50,16 +50,14 @@ class MainActivity : AppCompatActivity() {
         val inflater = LayoutInflater.from(this)
         val view = inflater.inflate(R.layout.dialog_add_kitty, null)
         val name = view.findViewById<EditText>(R.id.etName)
-        val amount = view.findViewById<EditText>(R.id.etAmount)
 
         AlertDialog.Builder(this)
             .setTitle("New Kitty")
             .setView(view)
             .setPositiveButton("Create") { _, _ ->
                 val kittyName = name.text.toString().trim()
-                val amt = amount.text.toString().trim().toDoubleOrNull() ?: 0.0
                 if (kittyName.isNotEmpty()) {
-                    KittyStore.add(Kitty(name = kittyName, contributionAmount = amt))
+                    KittyStore.add(Kitty(name = kittyName))
                     refresh()
                 }
             }
@@ -85,7 +83,7 @@ class MainActivity : AppCompatActivity() {
         override fun onBindViewHolder(holder: VH, position: Int) {
             val k = items[position]
             holder.name.text = k.name
-            holder.meta.text = "${k.members.size} members · ${k.contributionAmount} per cycle"
+            holder.meta.text = "${k.members.size} members · each adds any amount"
 
             val nextPayee = k.payoutForCycle(engine.nextCycleIndex(k))
             val nextName = k.members.firstOrNull { it.id == nextPayee }?.name

@@ -9,8 +9,8 @@ class KittyEngineTest {
 
     private val engine = KittyEngine.instance
 
-    private fun kittyWith3Members(name: String = "Test", amount: Double = 100.0): Kitty {
-        val k = Kitty(name = name, contributionAmount = amount)
+    private fun kittyWith3Members(name: String = "Test"): Kitty {
+        val k = Kitty(name = name)
         k.members.add(Member(id = "a", name = "A"))
         k.members.add(Member(id = "b", name = "B"))
         k.members.add(Member(id = "c", name = "C"))
@@ -28,7 +28,7 @@ class KittyEngineTest {
 
     @Test
     fun `payout returns null when there are no members`() {
-        val k = Kitty(name = "Empty", contributionAmount = 50.0)
+        val k = Kitty(name = "Empty")
         assertEquals(null, k.payoutForCycle(0))
     }
 
@@ -77,15 +77,6 @@ class KittyEngineTest {
         assertEquals(200.0, engine.totalPaid(k, "a"), 0.001)
         assertEquals(100.0, engine.totalPaid(k, "b"), 0.001)
         assertEquals(0.0, engine.totalPaid(k, "c"), 0.001)
-    }
-
-    @Test
-    fun `outstanding returns remaining amount owed`() {
-        val k = kittyWith3Members()
-        val c0 = Cycle(index = 0, payoutMemberId = "a")
-        engine.recordPayment(k, c0, "a", 40.0)
-        assertEquals(60.0, engine.outstanding(k, c0, "a"), 0.001)
-        assertEquals(100.0, engine.outstanding(k, c0, "b"), 0.001)
     }
 
     @Test
@@ -145,7 +136,6 @@ class KittyEngineTest {
         engine.recordPayment(k, c0, "a", 50.0)
         engine.recordPayment(k, c0, "b", 100.0)
         assertEquals(150.0, k.potCollected(c0), 0.001)
-        assertEquals(300.0, k.expectedTotalForCycle(), 0.001)
     }
 
     @Test

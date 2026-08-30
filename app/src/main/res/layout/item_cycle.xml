@@ -43,11 +43,12 @@
         android:textColor="@color/warm_subtext"
         android:textSize="13sp" />
 
-    <GridLayout
+    <LinearLayout
         android:id="@+id/cycleMembers"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp" />
+        android:layout_marginTop="8dp"
+        android:orientation="vertical" />
 
     <Button
         android:id="@+id/btnCloseCycle"

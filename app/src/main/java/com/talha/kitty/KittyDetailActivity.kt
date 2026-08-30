@@ -5,9 +5,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.Button
-import android.widget.CheckBox
 import android.widget.EditText
-import android.widget.GridLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
@@ -59,7 +57,7 @@ class KittyDetailActivity : AppCompatActivity() {
     private fun render() {
         val k = kitty ?: return
         tvName.text = k.name
-        tvMeta.text = "${k.members.size} members · ${k.contributionAmount} each per cycle"
+        tvMeta.text = "${k.members.size} members · each adds any amount"
 
         val collected = engine.runningBalance(k)
         val complete = k.cycles.count { it.isClosed }
@@ -97,13 +95,12 @@ class KittyDetailActivity : AppCompatActivity() {
         val title = v.findViewById<TextView>(R.id.tvCycleTitle)
         val status = v.findViewById<TextView>(R.id.tvCycleStatus)
         val summary = v.findViewById<TextView>(R.id.tvCycleSummary)
-        val memberBox = v.findViewById<GridLayout>(R.id.cycleMembers)
+        val memberBox = v.findViewById<LinearLayout>(R.id.cycleMembers)
         val btnClose = v.findViewById<Button>(R.id.btnCloseCycle)
 
         title.text = "Cycle ${cycle.index + 1} — pays ${payee}"
         val pot = k.potCollected(cycle)
-        val expected = k.expectedTotalForCycle()
-        summary.text = "Collected $pot of $expected"
+        summary.text = "Collected so far:  $pot"
 
         val complete = engine.isCycleComplete(k, cycle)
         status.text = when {
@@ -120,42 +117,29 @@ class KittyDetailActivity : AppCompatActivity() {
         )
 
         memberBox.removeAllViews()
-        val cols = when {
-            k.members.isEmpty() -> 1
-            k.members.size <= 4 -> k.members.size
-            k.members.size <= 8 -> 2
-            else -> 3
-        }
-        memberBox.columnCount = cols
+        val frozen = cycle.isClosed
         k.members.forEach { m ->
+            val row = Button(this)
             val contribution = cycle.contributions[m.id]
-            val checked = contribution != null
-            val tint = if (checked) 0xFF3E9B6E.toInt() else 0xFFC4685A.toInt()
-            val cb = CheckBox(this)
-            cb.text =
-                if (checked) "  👤 ${m.name}\n  Paid ${formatTime(contribution!!.paidAtMillis)}"
-                else "  👤 ${m.name}"
-            cb.isChecked = checked
-            cb.buttonTintList = android.content.res.ColorStateList.valueOf(tint)
-            cb.setTextColor(tint)
-            val frozen = cycle.isClosed
-            cb.isClickable = !frozen
-            cb.isEnabled = !frozen
-            cb.setOnCheckedChangeListener { _, chk ->
-                if (chk) {
-                    engine.recordPayment(k, cycle, m.id, k.contributionAmount)
-                } else {
-                    engine.undoPayment(k, cycle, m.id)
-                }
-                KittyStore.update()
-                render()
+            val amount = contribution?.amount ?: 0.0
+            row.text = if (amount > 0)
+                "👤 ${m.name}\n   gave $amount (${formatTime(contribution!!.paidAtMillis)})"
+            else
+                "👤 ${m.name}\n   tap to enter amount"
+            row.setBackgroundResource(R.drawable.bg_tag)
+            row.setTextColor(if (amount > 0) 0xFF3E9B6E.toInt() else 0xFFC4685A.toInt())
+            row.isEnabled = !frozen
+            row.setOnClickListener {
+                showContributionDialog(k, cycle, m)
             }
-            val lp = GridLayout.LayoutParams()
-            lp.width = 0
-            lp.height = GridLayout.LayoutParams.WRAP_CONTENT
-            lp.columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
-            cb.layoutParams = lp
-            memberBox.addView(cb)
+            val lp = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            val dp = resources.displayMetrics.density
+            lp.setMargins(0, (4 * dp).toInt(), 0, (4 * dp).toInt())
+            row.layoutParams = lp
+            memberBox.addView(row)
         }
 
         btnClose.text = if (cycle.isClosed) "Closed ✓" else "Close Cycle (hand over pot)"
@@ -170,6 +154,31 @@ class KittyDetailActivity : AppCompatActivity() {
             }
         }
         return v
+    }
+
+    private fun showContributionDialog(k: Kitty, cycle: Cycle, m: Member) {
+        val input = EditText(this)
+        input.hint = "Amount ${m.name} can give"
+        input.inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+        val existing = cycle.contributions[m.id]?.amount
+        if (existing != null && existing > 0) input.setText(existing.toString())
+        AlertDialog.Builder(this)
+            .setTitle("Contribution — ${m.name}")
+            .setMessage("Enter any amount. Leave blank or 0 to remove.")
+            .setView(input)
+            .setPositiveButton("Save") { _, _ ->
+                val text = input.text.toString().trim()
+                val amount = text.toDoubleOrNull() ?: 0.0
+                if (amount > 0) {
+                    engine.recordPayment(k, cycle, m.id, amount)
+                } else {
+                    engine.undoPayment(k, cycle, m.id)
+                }
+                KittyStore.update()
+                render()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun showAddMemberDialog() {
